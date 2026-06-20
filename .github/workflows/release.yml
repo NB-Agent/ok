@@ -83,7 +83,22 @@ jobs:
 
       - name: Build desktop app
         working-directory: desktop
-        run: wails build -production -trimpath -webview2 embed 2>&1
+        shell: pwsh
+        run: |
+          Write-Host "=== Go version ==="
+          go version
+          Write-Host "=== Check go.mod ==="
+          Get-Content go.mod -TotalCount 5
+          Write-Host "=== go vet desktop ==="
+          go vet ./... 2>&1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Write-Host "=== go mod tidy ==="
+          go mod tidy 2>&1
+          Write-Host "=== wails build ==="
+          wails build -production -trimpath 2>&1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Write-Host "=== Check output ==="
+          Get-ChildItem build\bin\
 
       - name: Upload to Release
         env:
