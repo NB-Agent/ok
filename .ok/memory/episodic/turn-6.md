@@ -1,47 +1,56 @@
 ---
 key: episodic-6
 type: episodic
-created: 2026-06-20T19:19:19Z
+created: 2026-06-20T21:47:48Z
 source: auto-evolution
 ---
 
 ## Input
 [Task Tree]
+✅ (root) (4 attempts)
+✅ (root) (4 attempts)
 ✅ (root)
 ✅ (root)
 ✅ (root)
-✅ (root) (2 attempts)
-✅ (root) (2 attempts)
-✅ (root) (2 attempts)
-✅ (root) (2 attempts)
-✅ (root)
-✅ (root)
-✅ (root) (2 attempts)
-✅ (root)
-✅ (root)
-✅ (root) (2 ...
+✅ (root) (4 attempts)
+
+
+# Environment
+
+# Self state
+- Git: master 📝dirty
+- Built-in tools: 54
+- Memory entries: 82...
 
 ## Output
-全部就绪。
+好，CI 已经干净了。提交：
 
-## 操作方法
-
-在 **PowerShell 或 CMD** 中执行：
-
-```powershell
+```cmd
 cd C:\Users\Administrator\Desktop\daima\ok-master
-setup_git.bat
+git add build.bat .github/workflows/release.yml
+git commit -m "build: one-click 7-binaries (6 CLI + 1 desktop), drop CI desktop"
+git push
 ```
 
-## 脚本干了什么
+## 最终效果
 
-| 步骤 | 说明 |
-|------|------|
-| 🧹 清理 | 删除编辑器产物、旧分析文档、蓝图、test.txt |
-| 📥 fetch | `git fetch origin` — 拉取远程完整 git 历史 |
-| 🔄 过渡 | `git checkout -b master origin/master` — 切换到远程 master 分支 |
-| 🧩 合并 | `git stash pop` — 把我们改动的文件放上来 |
-| 📝 提交 | 只提交我们的改动（go.mod 修复、CHANGELOG、清理等） |
-| 🚀 推送 | `git push` — 推送到 `https://github.com/NB-Agent/ok` |
+```cmd
+build.bat
+```
 
-**推送时如果提示输入密码**，请用 [Personal...
+一键输出到 `release\` 目录：
+
+```
+release/
+  ok-linux-amd64
+  ok-linux-arm64
+  ok-darwin-amd64
+  ok-darwin-arm64
+  ok-windows-amd64.exe
+  ok-windows-arm64.exe
+  ok-windows-desktop.exe
+```
+
+**7 个文件，全部拖到 GitHub Release 页面，搞定。**
+
+> 注：Wails 桌面版不能跨平台编译（需要原生 WebVi...

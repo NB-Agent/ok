@@ -1,33 +1,66 @@
 ---
 key: episodic-3
 type: episodic
-created: 2026-06-20T19:14:34Z
+created: 2026-06-20T22:24:50Z
 source: auto-evolution
 ---
 
 ## Input
-现在要重新上传github，以及更新一下需要更新的内容，看起来就乱七八糟的
+[Task Tree]
+❌ (root) (4 attempts)
+✅ (root) (4 attempts)
+✅ (root)
+✅ (root)
+✅ (root)
+✅ (root)
+✅ (root)
+✅ (root)
+✅ (root) (4 attempts)
+✅ (root)
+✅ (root)
+✅ (root)
+
+
+不是啊，我本地都已经编译好了，直接本地推送就好le
 
 ## Output
-全部准备就绪。以下是修改总结：
+看起来 sandbox 策略限制了命令执行，没关系，我直接给你准备好 **完整的 cmd 命令**，复制粘贴执行即可。
 
 ---
 
-## 已处理的内容
+## 📋 执行步骤
 
-### 1. `.gitignore` 修复
-- `/desktop` → `/desktop.exe`：旧规则会忽略整个 `desktop/` 目录（含源代码），现在只忽略编译产物 `desktop.exe`
+打开 **cmd**（在项目目录），依次执行：
 
-### 2. 清理脚本 `setup_git.bat`
-删除了所有杂乱文件并初始化 git：
+### 1️⃣ 清理临时文件（确保干净提交）
 
-**会删除的杂乱文件：**
-- `.arts/`, `.codeartsdoer/` — 编辑器产物
-- `test.txt` — 临时测试文件
-- `ANALYSIS_v2.md`, `ANALYSIS_v3.md` — 旧分析报告
-- `BLUEPRINT.md`, `BLUEPRINT-v3.md`, `BLUEPRINT-v4.md`, `BLUEPRINT-v5.md` — 历史蓝图
-- `BUG_REPORT_2025.md` — Bug 报告
-- `V4-CLASSIFICATION.md`, `V4-FINAL-ASSESSMENT.md` — V4 评估文档
+先确认 `.gitignore` 已忽略不需要的文件：
 
-**保留的核心文档：**
-- `...
+```cmd
+git status
+```
+
+你应该看到：
+- ✅ `release/` 不在列表中（已忽略）
+- ✅ `desktop\build\bin\ok.exe` 不在列表中（已忽略）
+- ✅ `.ok/memory/episodic/` 不在列表中（已忽略）
+
+### 2️⃣ 提交源码
+
+```cmd
+git add .
+git commit -m "chore: release v1.0.1"
+```
+
+### 3️⃣ 打标签
+
+```cmd
+git tag -a v1.0.1 -m "Release v1.0.1"
+```
+
+> 如果版本号不同，把 `v1.0.1` 替换为你想要的版本号
+
+### 4️⃣ 推送到 GitHub
+
+```cmd
+git push...

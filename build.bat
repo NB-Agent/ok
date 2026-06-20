@@ -61,7 +61,7 @@ cd /d "%~dp0desktop"
 set CGO_ENABLED=1
 set GOOS=windows
 set GOARCH=amd64
-call wails build -production -trimpath
+call wails build -trimpath
 if %ERRORLEVEL% neq 0 ( echo DESKTOP FAILED & pause & exit /b 1 )
 copy /y build\bin\ok.exe "%~dp0%OUT%\ok-windows-desktop.exe" >nul
 

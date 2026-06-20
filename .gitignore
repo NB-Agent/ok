@@ -14,9 +14,15 @@
 # `go build` binary produced in-tree (desktop.exe on Windows)
 /desktop.exe
 
+# Build output — binaries, too large for git
+/release/
+
 # One-time setup script — not part of the repo
 /setup_git.bat
 /setup.ps1
+# One-click push helper — local convenience scripts
+/push-github.ps1
+/push-github.bat
 # Wails dependency-change cache
 /frontend/package.json.md5
 # Node modules and frontend build output
@@ -34,3 +40,6 @@
 /build/bin/task-mgr/
 /build/bin/ticket/
 /build/bin/user/
+
+# Session episodic memory — local-only, not for sharing
+.ok/memory/episodic/
