@@ -83,7 +83,7 @@ jobs:
 
       - name: Build desktop app
         working-directory: desktop
-        run: wails build -production -trimpath
+        run: wails build -production -trimpath -webview2 embed 2>&1
 
       - name: Upload to Release
         env:
