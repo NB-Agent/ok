@@ -3,7 +3,6 @@
 package sandbox
 
 import (
-	"fmt"
 	"os"
 	"strings"
 	"unsafe"
@@ -210,7 +209,7 @@ func createLandlockRuleset(network bool) int {
 		unix.Close(int(fd))
 	} else {
 		// Try without IOCTL_DEV (ABI v3 or older).
-		stripped := handledFS &^ unix.LANDLOCK_ACCESS_FS_IOCTL_DEV
+		var stripped uint64 = handledFS &^ unix.LANDLOCK_ACCESS_FS_IOCTL_DEV
 		probe2 := landlockRulesetAttr{handledAccessFs: stripped}
 		fd2, _, errno2 := unix.Syscall(unix.SYS_LANDLOCK_CREATE_RULESET,
 			uintptr(unsafe.Pointer(&probe2)),
