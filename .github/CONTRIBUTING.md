@@ -5,7 +5,7 @@ Thanks for your interest in contributing! OK is a config-driven AI coding agent 
 ## Getting Started
 
 ```bash
-git clone https://github.com/esengine/ok.git
+git clone https://github.com/NB-Agent/ok.git
 cd ok
 
 # Build
@@ -100,4 +100,4 @@ ok/
 
 ## Questions?
 
-Open a [discussion](https://github.com/esengine/ok/discussions) or join the community channel (TODO: link).
+Open a [discussion](https://github.com/NB-Agent/ok/discussions) or join the community channel (TODO: link).

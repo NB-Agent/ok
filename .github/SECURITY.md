@@ -5,7 +5,7 @@
 If you discover a security vulnerability in OK, please **do not** open a public issue. Instead, report it privately:
 
 1. **Email**: security [at] ok.dev (TODO: set up security contact)
-2. **GitHub Security Advisory**: Use the "Report a vulnerability" button on the [Security tab](https://github.com/esengine/ok/security)
+2. **GitHub Security Advisory**: Use the "Report a vulnerability" button on the [Security tab](https://github.com/NB-Agent/ok/security)
 
 We aim to acknowledge reports within 48 hours and provide a timeline for a fix within 5 business days.
 
