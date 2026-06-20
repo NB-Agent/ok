@@ -84,6 +84,8 @@ jobs:
       - name: Build desktop app
         working-directory: desktop
         shell: pwsh
+        env:
+          CGO_ENABLED: "1"
         run: |
           Write-Host "=== Go version ==="
           go version
