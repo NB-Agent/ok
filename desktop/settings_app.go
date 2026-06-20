@@ -73,6 +73,7 @@ type RouterView struct {
 type SettingsView struct {
 	DefaultModel string          `json:"defaultModel"`
 	PlannerModel string          `json:"plannerModel"`
+	Agent        AgentView       `json:"agent"`
 	Providers    []ProviderView  `json:"providers"`
 	Permissions  PermissionsView `json:"permissions"`
 	Sandbox      SandboxView     `json:"sandbox"`
@@ -104,6 +105,10 @@ func (a *App) Settings() SettingsView {
 	v := SettingsView{
 		DefaultModel: cfg.DefaultModel,
 		PlannerModel: cfg.Agent.PlannerModel,
+		Agent: AgentView{
+			Temperature: cfg.Agent.Temperature,
+			MaxSteps:    cfg.Agent.MaxSteps,
+		},
 		Providers:    []ProviderView{},
 		Permissions: PermissionsView{
 			Mode:  cfg.ModeStyle(),
