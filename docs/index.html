@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OK — The AI agent that writes its own playbooks</title>
+  <meta name="description" content="OK is an AI coding agent infrastructure. Self-evolving skills, ECP knowledge federation, ProofChain audit, OS-level sandbox, multi-agent orchestration.">
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --dim: #8b949e;
+      --accent: #58a6ff;
+      --grad-1: #5eead4;
+      --grad-2: #67e8f9;
+      --grad-3: #a5b4fc;
+      --grad-4: #c4b5fd;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    .container {
+      max-width: 720px;
+      width: 100%;
+      text-align: center;
+    }
+    .logo { max-width: 480px; width: 100%; margin-bottom: 2rem; }
+    .tagline {
+      font-size: 1.25rem;
+      font-weight: 600;
+      background: linear-gradient(90deg, var(--grad-1), var(--grad-2), var(--grad-3), var(--grad-4));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.75rem;
+    }
+    .sub {
+      font-size: 1rem;
+      color: var(--dim);
+      line-height: 1.6;
+      margin-bottom: 2.5rem;
+    }
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-bottom: 2.5rem;
+    }
+    .pill {
+      display: inline-block;
+      padding: 0.35rem 0.85rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: 0.8rem;
+      color: var(--dim);
+    }
+    .pill.highlight {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2.5rem;
+      text-align: left;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem;
+      transition: border-color 0.2s;
+    }
+    .card:hover { border-color: var(--accent); }
+    .card h3 {
+      font-size: 0.9rem;
+      margin-bottom: 0.4rem;
+      color: var(--text);
+    }
+    .card p {
+      font-size: 0.8rem;
+      color: var(--dim);
+      line-height: 1.5;
+    }
+    .btn {
+      display: inline-block;
+      padding: 0.75rem 2rem;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: opacity 0.2s;
+      margin-bottom: 3rem;
+    }
+    .btn:hover { opacity: 0.85; }
+    .footer {
+      font-size: 0.75rem;
+      color: var(--dim);
+    }
+    .footer a { color: var(--accent); text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <img src="logo.svg" alt="OK" class="logo">
+
+    <div class="tagline">The AI agent that writes its own playbooks</div>
+    <div class="sub">
+      Self-evolving skills · ECP knowledge federation · ProofChain audit trail<br>
+      OS-level sandbox · Multi-agent DAG orchestration · One engine, multiple frontends
+    </div>
+
+    <div class="pill-row">
+      <span class="pill highlight">⚡ Self-evolving</span>
+      <span class="pill">🔗 ProofChain</span>
+      <span class="pill">🌐 ECP</span>
+      <span class="pill">🧭 DAG Reasoner</span>
+      <span class="pill">🔒 Sandbox-first</span>
+      <span class="pill">🧱 Civilization Primitives</span>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h3>🧬 Self-Evolution</h3>
+        <p>Every conversation teaches OK. It detects patterns, generates skills, and prunes what's obsolete — automatically.</p>
+      </div>
+      <div class="card">
+        <h3>🌐 ECP</h3>
+        <p>Cross-instance knowledge federation. Your agents share learned skills across machines, HMAC-authenticated.</p>
+      </div>
+      <div class="card">
+        <h3>🔗 ProofChain</h3>
+        <p>Every tool execution in a SHA-256 hash chain. Not "trust me" — "verify me."</p>
+      </div>
+      <div class="card">
+        <h3>🧭 DAG Reasoner</h3>
+        <p>Complex tasks decomposed into dependency-ordered plans. Failed subtasks re-decompose, not blind-retry.</p>
+      </div>
+      <div class="card">
+        <h3>🔒 Sandbox-First</h3>
+        <p>Windows AppContainer, Linux Landlock + seccomp-bpf, macOS Seatbelt. Three-level deny > ask > allow permissions.</p>
+      </div>
+      <div class="card">
+        <h3>🏠 Everywhere</h3>
+        <p>TUI, Desktop, VS Code, JetBrains — one kernel, every surface. 7 chat platform bots in development.</p>
+      </div>
+    </div>
+
+    <a class="btn" href="https://github.com/NB-Agent/ok">⭐ GitHub &nbsp;→</a>
+
+    <div class="footer">
+      <a href="https://github.com/NB-Agent/ok">github.com/NB-Agent/ok</a>
+      &nbsp;·&nbsp;
+      Apache-2.0
+      &nbsp;·&nbsp;
+      <a href="https://github.com/NB-Agent/ok/blob/master/CHANGELOG.md">Changelog</a>
+    </div>
+  </div>
+</body>
+</html>
