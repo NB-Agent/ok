@@ -3,7 +3,7 @@ module github.com/NB-Agent/ok/desktop
 go 1.25.0
 
 require (
-	github.com/NB-Agent/ok v0.0.0-20260620171318-6711354ae860
+	github.com/NB-Agent/ok v0.0.0
 	github.com/getlantern/systray v1.2.2
 	github.com/wailsapp/wails/v2 v2.12.0
 )

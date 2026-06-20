@@ -85,7 +85,9 @@ jobs:
         working-directory: desktop
         env:
           CGO_ENABLED: "1"
-        run: wails build -production -trimpath 2>&1
+        run: |
+          go mod tidy
+          wails build -production -trimpath 2>&1
 
       - name: Upload to Release
         env:
