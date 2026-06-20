@@ -1,0 +1,138 @@
+package i18n
+
+// English is the baseline catalog. The drift-guard test reflects over its
+// fields, so every other catalog must populate the same set.
+var English = Messages{
+	Subtitle:        "config + plugin driven coding agent",
+	WelcomeTitleFmt: "Welcome to %s",
+	NoConfigYet:     "No configuration found yet — let's set it up.",
+	StartingChatFmt: "Starting %s…",
+	SetKeyHint:      "Set your API key, then run `ok chat`.",
+	ConfigLabel:     "config",
+	ModelsLabel:     "models",
+	ConfigNotFound:  "not found — using built-in defaults",
+	ConfigErrorFmt:  "%s — error: %v",
+	NoKey:           "no key",
+	Ready:           "ready",
+	GetStarted:      "Get started",
+	StepScaffold:    "scaffold ok.toml",
+	StepSetKey:      "set API key",
+
+	InitHint:       "Project memory (AGENTS.md) is generated in-session: run `ok chat`, then `/init` — the model analyzes the codebase and writes it. For configuration, use `ok setup`.",
+	StepSetKeyHint: "export DEEPSEEK_API_KEY=… or add to .env",
+	StepChatDesc:   "interactive session",
+	StepRunDesc:    "one-shot task",
+	HelpFooter:     "ok help · all commands",
+
+	ChatTip:           "Context is kept across turns. Type 'exit' or Ctrl-D to quit.",
+	TurnCancelled:     "cancelled — back to prompt",
+	NoSessionToResume: "no saved session to resume — start a new one with `ok chat`",
+	ResumeRequiresTTY: "--resume needs an interactive terminal; pass --continue for the most recent session",
+	PickSessionLabel:  "Resume which session?",
+
+	ChatStatusThinkingFmt:  "%s thinking… (%ds · Esc cancels)",
+	ChatStatusIdle:         "Tab toggles plan · Enter sends · Ctrl+F search history · PgUp/PgDn scrolls · Ctrl-D quits",
+	ChatStatusPlanApproval: "Enter/y approves & executes · n/Esc keeps planning · PgUp/PgDn scrolls",
+	PlanApprovalPrompt:     "Plan ready above — Enter/y to approve & execute, n/Esc to keep planning",
+	ChatStatusToolApproval: "y approve once · a allow this session · n deny · Ctrl-C cancels turn",
+	AskTypeSomething:       "Type something else",
+	AskTypingHint:          "type below, Enter to confirm",
+	AskChatInstead:         "None — just chat",
+	ChatStatusQuestion:     "↑/↓ move · number to pick · space multi · Enter confirm · ←/→ switch · Esc cancel",
+	ToolApprovalPromptFmt:  "Allow %s%s? — [y] once · [a] this session · [n] no",
+
+	SlashCompactDone:   "session compacted — older middle replaced by a summary, recent turns kept",
+	SlashCompactFailed: "compaction failed",
+	SlashNewDone:       "fresh session started — previous transcript saved",
+	SlashNewFailed:     "could not start a new session",
+	SlashUnavailable:   "command unavailable in this build",
+	SlashUnknown:       "unknown command",
+	SlashTodoCleared:   "task list dismissed",
+	SlashHelp:          "commands: /audit · /search · /compact · /new · /todo · /model (switch model) · /mcp · /skill · /hooks · /memory · /help · plus skills (/init, /explore, …)",
+	SlashPromptEmpty:   "the MCP prompt returned no content to send",
+	SlashMCPNone:       "no MCP servers configured — add a [[plugins]] entry in ok.toml",
+	CompHintSlash:      "↑/↓ move · Tab/Enter select · Esc close",
+	CompHintFile:       "↑/↓ move · Tab/Enter open folder or pick file · Esc close",
+
+	CmdNew:          "fork a fresh session",
+	CmdCompact:      "compact context",
+	CmdModel:        "switch model",
+	CmdMemory:       "show memory files",
+	CmdMcp:          "MCP servers",
+	CmdHooks:        "manage hooks",
+	CmdSkill:        "manage skills",
+	CmdAudit:        "verify audit trail",
+	CmdSearch:       "search history",
+	CmdHelp:         "list commands",
+	CmdTodo:         "dismiss the task list",
+	ArgSkillList:    "list skills",
+	ArgSkillShow:    "show a skill's body",
+	ArgSkillNew:     "scaffold a new skill",
+	ArgSkillPaths:   "show discovery paths",
+	ArgMcpAdd:       "connect a server",
+	ArgMcpRemove:    "disconnect a server",
+	ArgMcpList:      "show configured servers",
+	ArgMcpConnected: "connected",
+	ArgHooksList:    "list active hooks",
+	ArgHooksTrust:   "trust this project's hooks",
+	ArgModelCurrent: "current",
+
+	ListModelsHeaderFmt: "models (active: %s)",
+	ListModelsHint:      "switch with the model switcher, or type /model <provider/model>",
+	ListMemoryHeader:    "memory files",
+	ListMemoryNone:      "memory: none — add with “#<note>” or run /init to generate AGENTS.md",
+	ListSkillsHeaderFmt: "skills (%d)",
+	ListSkillsNone:      "skills: none defined — invoke a built-in like /init, or author one with install_skill",
+	ListHooksHeaderFmt:  "hooks (%d active)",
+	ListHooksNone:       "hooks: none active — configure in .ok/settings.json (project, after trust) or ~/.ok/settings.json (global)",
+	ListMcpHeader:       "mcp servers",
+	ListMcpNone:         "mcp: no servers connected — add one in ok.toml ([[plugins]]) or a project .mcp.json",
+
+	SelectProvidersLabel:  "Select providers to enable",
+	EnterAPIKeysHeader:    "Enter API keys (Enter to skip and set later in .env):",
+	MissingKeyIntro:       "ok.toml is ready — just an API key away.",
+	WroteFileFmt:          "Wrote %s",
+	SetupComplete:         "Setup complete.",
+	SetupCancelled:        "setup cancelled.",
+	TryHintFmt:            "Try: %s",
+	NextHint:              "Next: set your API key (export DEEPSEEK_API_KEY=... or add to .env), then run `ok run \"your task\"`.",
+	ConfirmReconfigureFmt: "%s already exists. Reconfigure and overwrite?",
+	KeepingExisting:       "Keeping existing config.",
+	NotOverwritingFmt:     "%s already exists; not overwriting",
+
+	UnknownCommandFmt: "unknown command %q",
+	UsageRunHint:      "usage: ok run [--model NAME] <task>",
+	ErrorPrefix:       "error:",
+	WriteConfigErr:    "write config:",
+	WriteEnvErr:       "write .env:",
+
+	SelectOneHint:  "(↑/↓ · Enter · q to cancel)",
+	SelectManyHint: "(↑/↓ · Space · Enter · q)",
+
+	UsageBody: `ok — a config- and plugin-driven coding agent (multi-model)
+
+Usage:
+  ok chat [--model NAME]                          interactive session (multi-turn)
+  ok run  [--model NAME] [--max-steps N] <task>   run one task and exit
+  ok serve [--model NAME] [--addr HOST:PORT]      serve the session over HTTP+SSE (browser client at /)
+  ok setup [path]                                 interactive config wizard; writes ok.toml (+ .env)
+  ok mcp <add|remove|list>                        manage MCP servers in ok.toml
+  ok update [--check]                             check for and apply updates
+  ok session <export|import|list>                 export/import/list sessions
+  ok doctor                                       full environment diagnostics
+  ok audit                                        view execution audit trail
+  ok version                                      show version
+  ok help                                         show this help
+
+Examples:
+  ok chat
+  ok run "implement the TODOs in main.go"
+  ok run --model mimo-pro "add unit tests for this function"
+  echo "explain this code" | ok run
+
+Configuration:
+  Resolution: flag > ./ok.toml > ~/.config/ok/config.toml > built-in defaults
+  Secrets come from the environment via api_key_env (e.g. DEEPSEEK_API_KEY).
+  Run 'ok setup' to scaffold a config; see docs/SPEC.md.
+`,
+}

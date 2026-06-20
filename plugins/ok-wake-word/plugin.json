@@ -1,0 +1,1 @@
+{"name":"@ok/wake-word","version":"1.0.0","description":"Wake word detection via Porcupine or Vosk","author":"OK Team","license":"MIT","tags":["wake-word","voice","porcupine"],"min_ok_version":"4.0.0","tools":["wake-word"],"entrypoint":"ok-wake-word-mcp","transport":"stdio"}

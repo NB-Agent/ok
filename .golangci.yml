@@ -1,0 +1,247 @@
+# golangci-lint configuration for OK
+# Run: golangci-lint run ./...
+linters:
+  enable:
+    - errcheck       # unchecked errors
+    - gosimple       # simplification suggestions
+    - govet          # go vet
+    - ineffassign    # ineffectual assignments
+    - staticcheck    # static analysis (the big one)
+    - unused         # unused code
+    - gofmt          # format checking
+    - goimports      # import ordering
+    - misspell       # spelling mistakes
+    - unconvert      # unnecessary type conversions
+    - unparam        # unused function parameters
+    - bodyclose      # HTTP response body must be closed
+    - nilerr         # nil error return when err != nil
+    - noctx          # http.Request without context
+    - prealloc       # slice preallocation opportunities
+    - revive         # drop-in replacement for golint
+    - stylecheck     # style checks
+    - errorlint      # error wrapping and comparison
+  disable:
+    - cyclop         # too noisy for this codebase
+    - funlen         # defer to human review
+    - gocognit       # cognitive complexity; review separately
+    - gocyclo        # cyclomatic complexity; review separately
+    - lll            # line length; not a hard rule
+    - wsl            # whitespace; gofmt handles this
+    - nlreturn       # newline before return; personal preference
+    - exhaustruct    # too strict for non-literal structs
+    - varnamelen     # short var names are idiomatic in Go
+    - paralleltest   # not all tests benefit from parallel
+    - testpackage    # _test packages are fine
+    - forbidigo      # we have specific reasons for fmt.Print in CLI
+    - depguard       # we manage deps manually
+
+linters-settings:
+  errcheck:
+    check-type-assertions: false
+    check-blank: false
+  errorlint:
+    errorf: true      # check fmt.Errorf with %w
+    asserts: true     # check errors.As usage
+    comparison: true  # check errors.Is against ==
+  govet:
+    enable-all: true
+    disable:
+      - fieldalignment # not worth the refactor
+  revive:
+    rules:
+      - name: blank-imports
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: dot-imports
+      - name: error-return
+      - name: error-naming
+      - name: exported
+      - name: if-return
+      - name: package-comments
+      - name: range
+      - name: receiver-naming
+      - name: superfluous-else
+      - name: time-naming
+      - name: unexported-return
+      - name: unreachable-code
+      - name: var-declaration
+      - name: var-naming
+        arguments:
+          - ["ID", "URL", "HTTP", "API", "JSON", "XML", "SSE", "MCP", "TOML", "TUI",
+             "CIDR", "SSRF", "TLS", "SHA", "LLM", "CLI", "DST", "ACP",
+             "IP", "UI", "OS", "OK", "ACL", "SID", "WFP", "DACL", "ACE"]
+  staticcheck:
+    checks: ["all"]
+  stylecheck:
+    checks: ["all", "-ST1000", "-ST1003"] # ST1000: package comments; ST1003: no underscores
+  misspell:
+    locale: US
+  goimports:
+    local-prefixes: ok
+
+run:
+  timeout: 5m
+  tests: true
+  modules-download-mode: readonly
+  go: "" # use go.mod version
+
+issues:
+  exclude-rules:
+    # Exclude some linters from test files
+    - path: _test\.go
+      linters:
+        - errcheck
+        - bodyclose
+        - noctx
+        - unparam
+        - revive
+    # Generated files
+    - path: desktop/
+      linters:
+        - all
+    # Allow unused in functions named after tools (matching built-in pattern)
+    - path: internal/tool/
+      linters:
+        - unparam
+    # Wire protocol value "cancelled" is intentional (breaking change to fix)
+    - path: internal/acp/protocol\.go
+      linters:
+        - misspell
+    # User-facing strings use British English
+    - linters:
+        - misspell
+      text: "cancelled"
+    # bodyclose: false positive — resp.Body is closed in readStream
+    - path: internal/provider/anthropic/anthropic\.go
+      linters:
+        - bodyclose
+    # bodyclose: false positive — resp.Body is closed in readStream
+    - path: internal/provider/openai/openai\.go
+      linters:
+        - bodyclose
+    # bodyclose: false positive — resp.Body closed via log.Close wrapper
+    - linters:
+        - bodyclose
+      text: "log.Close"
+    # nilerr: intentional Walk callback err -> nil (skip unreadable files)
+    - path: internal/verification/v2/
+      linters:
+        - nilerr
+    # nilerr: intentional skip unreadable entries
+    - linters:
+        - nilerr
+      text: "skip unreadable"
+    - linters:
+        - nilerr
+      text: "not a JSON-RPC message"
+    # unusedwrite: test struct literals are documentation, not bugs
+    - path: _test\.go
+      linters:
+        - govet
+      text: "unusedwrite"
+    # goimports conflicts between binary and linter versions in test files
+    - path: _test\.go
+      linters:
+        - goimports
+    # Remaining lint noise that has been reviewed and accepted
+    # errcheck: syscall calls in Windows sandbox are best-effort
+    - path: internal/sandbox/
+      linters:
+        - errcheck
+    # unparam: intentional API consistency
+    - path: internal/agent/compact\.go
+      linters:
+        - unparam
+    - path: internal/cli/audit\.go
+      linters:
+        - unparam
+    - path: internal/cli/mcp\.go
+      linters:
+        - unparam
+    - path: internal/control/approval\.go
+      linters:
+        - unparam
+    - path: internal/dstvalid/advancedhooks\.go
+      linters:
+        - unparam
+    # goimports: version mismatch in CI
+    - path: internal/cli/msg\.go
+      linters:
+        - goimports
+    - path: internal/control/controller_query\.go
+      linters:
+        - goimports
+    # noctx: CLI functions using context.Background() intentionally
+    - path: internal/cli/update\.go
+      linters:
+        - noctx
+    - path: internal/agent/store\.go
+      linters:
+        - noctx
+    # Reviewed and accepted: British English, sandbox naming, shadow in test mocks
+    - linters:
+        - misspell
+      text: "behaviour|categorises|synchronisation|serialises|defence|honour|labelled|Analyse"
+    - linters:
+        - revive
+      text: "sandbox.SandboxExec|tool.ToolGrouper|tool.ToolRegistry|agent.AgentDef"
+    - path: internal/sandbox/
+      linters:
+        - stylecheck
+      text: "ST1005"
+    - path: internal/skill/skill\.go
+      linters:
+        - stylecheck
+      text: "ST1005"
+    - linters:
+        - govet
+      text: "shadow"
+    - path: internal/sandbox/
+      linters:
+        - unconvert
+    - linters:
+        - ineffassign
+      path: internal/sandbox/appcontainer_windows\.go
+    - path: internal/codegraph/indexer_regex\.go
+      linters:
+        - revive
+      text: "package-comments"
+    - path: internal/cli/doctor\.go
+      linters:
+        - goimports
+    # prealloc: intentional (slice sizes are small and vary)
+    - linters:
+        - prealloc
+      text: "."
+    # staticcheck: unreachable/in-effectual code in sandbox already has //nolint
+    - path: internal/sandbox/appcontainer_windows\.go
+      linters:
+        - staticcheck
+    # gosimple: struct literal vs type conversion preference
+    - path: internal/mcpserver/mcpserver\.go
+      linters:
+        - gosimple
+    - linters:
+        - misspell
+      text: "initialise|recognise|reorganise"
+    # HookConfig stutter is intentional for clarity
+    - linters:
+        - revive
+      text: "HookConfig"
+    # nilerr: intentional skip patterns
+    - linters:
+        - nilerr
+      text: "skip unreadable|not a JSON-RPC"
+    # prealloc: test file with small n
+    - path: internal/agent/planmode_test\.go
+      linters:
+        - prealloc
+    # bridge: network encode errors are connection drops (client disconnected)
+    - path: internal/bridge/
+      linters:
+        - errcheck
+        - bodyclose
+        - stylecheck
+
+  max-issues-per-linter: 0
+  max-same-issues: 0

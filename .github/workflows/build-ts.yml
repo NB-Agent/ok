@@ -1,0 +1,22 @@
+name: Build with tree-sitter
+on:
+  push:
+    branches: [main-v2]
+  pull_request:
+    branches: [main-v2]
+jobs:
+  build-ts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Install tree-sitter deps
+        run: |
+          go get github.com/smacker/go-tree-sitter@latest
+          go get github.com/smacker/go-tree-sitter/golang@latest
+          go get github.com/smacker/go-tree-sitter/typescript/typescript@latest
+          go get github.com/smacker/go-tree-sitter/python@latest
+      - name: Build
+        run: CGO_ENABLED=1 go build -tags=treesitter -trimpath -o /dev/null ./cmd/ok

@@ -1,0 +1,83 @@
+# goreleaser configuration for OK Universal Agent.
+# Builds CLI binaries for all platforms, generates checksums, creates GitHub release.
+version: 2
+
+project_name: ok
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: ok
+    main: ./cmd/ok
+    binary: ok
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: darwin
+        goarch: 386
+
+  - id: ok-installer
+    main: ./cmd/ok-installer
+    binary: ok-installer
+    ldflags:
+      - -s -w
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - windows
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - id: ok
+    formats: [binary]
+    name_template: "{{ .Binary }}-{{ .Os }}-{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
+    allow_different_binary_count: true
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+release:
+  draft: false
+  prerelease: auto
+  header: |
+    ## OK {{ .Version }} — Universal Agent
+
+    See the [CHANGELOG](https://github.com/esengine/ok/blob/main/CHANGELOG.md) for details.
+
+    ### Download
+    - **Windows**: `ok-windows-amd64.exe`
+    - **macOS**: `ok-darwin-amd64` / `ok-darwin-arm64` (Apple Silicon)
+    - **Linux**: `ok-linux-amd64` / `ok-linux-arm64`
+    - **Installer (Windows)**: `ok-installer-windows-amd64.exe` — double-click to install
+
+    ### Quick start
+    ```bash
+    # Set your API key
+    export DEEPSEEK_API_KEY=sk-...
+
+    # Run
+    ./ok chat
+    ```
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+      - "^chore:"

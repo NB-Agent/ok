@@ -1,0 +1,1 @@
+{"name":"@ok/computer-use","version":"1.0.0","description":"Visual desktop automation: screenshot, analyze, click, type","author":"OK Team","license":"MIT","tags":["computer-use","vision","automation"],"min_ok_version":"4.0.0","tools":["computer-use"],"entrypoint":"ok-computer-use-mcp","transport":"stdio"}

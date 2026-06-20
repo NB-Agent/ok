@@ -1,0 +1,17 @@
+name: Winget Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  winget:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: vedantmgoyal2009/winget-releaser@v2
+        with:
+          identifier: colbymchenry.ok
+          token: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,36 @@
+# Wails build assets/output — mostly auto-generated (plists, manifests, compiled
+# binary); ignore them but keep the committed designed app icon.
+/build/*
+!/build/appicon.png
+
+# Go test binaries
+*.test
+
+# Local config symlinks for `wails dev` (point at the repo-root ok.toml/.env
+# so the desktop app resolves the same config/keys the CLI does). Never commit.
+/ok.toml
+/.env
+
+# `go build` binary produced in-tree (desktop.exe on Windows)
+/desktop.exe
+
+# One-time setup script — not part of the repo
+/setup_git.bat
+/setup.ps1
+# Wails dependency-change cache
+/frontend/package.json.md5
+# Node modules and frontend build output
+/frontend/node_modules/
+/frontend/dist/
+/build/bin/AGENTS.md
+/build/bin/*.py
+/build/bin/*.sh
+/build/bin/.env
+/build/bin/ok.toml
+/build/bin/go-proj/
+/build/bin/queue/
+/build/bin/roman/
+/build/bin/store/
+/build/bin/task-mgr/
+/build/bin/ticket/
+/build/bin/user/

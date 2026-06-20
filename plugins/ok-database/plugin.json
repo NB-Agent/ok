@@ -1,0 +1,1 @@
+{"name":"@ok/database","version":"1.0.0","description":"SQLite/PostgreSQL/MySQL database queries via CLI","author":"OK Team","license":"MIT","tags":["database","sql","sqlite","postgres","mysql"],"min_ok_version":"4.0.0","tools":["database"],"entrypoint":"ok-database-mcp","transport":"stdio"}

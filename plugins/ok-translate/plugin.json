@@ -1,0 +1,1 @@
+{"name":"@ok/translate","version":"1.0.0","description":"AI translation between languages via LLM API","author":"OK Team","license":"MIT","tags":["translate","i18n","llm"],"min_ok_version":"4.0.0","tools":["translate"],"entrypoint":"ok-translate-mcp","transport":"stdio","capabilities":{"network":true}}

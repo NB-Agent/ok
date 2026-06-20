@@ -1,0 +1,1 @@
+{"name":"@ok/voice","version":"1.0.0","description":"Speech synthesis and voice input via OS commands","author":"OK Team","license":"MIT","tags":["voice","speech","audio"],"min_ok_version":"4.0.0","tools":["voice"],"entrypoint":"ok-voice-mcp","transport":"stdio"}

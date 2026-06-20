@@ -1,0 +1,1 @@
+{"name":"@ok/ai-vision","version":"1.0.0","description":"Image and video analysis: read metadata, extract key frames, analyze video","author":"OK Team","license":"MIT","tags":["image","video","ffmpeg","vision"],"min_ok_version":"4.0.0","tools":["image_read","video_analyze"],"entrypoint":"ok-ai-vision-mcp","transport":"stdio"}

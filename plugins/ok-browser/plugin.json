@@ -1,0 +1,1 @@
+{"name":"@ok/browser","version":"1.0.0","description":"Headless Chrome browser control: navigate, click, type, screenshot, text, eval","author":"OK Team","license":"MIT","tags":["browser","chrome","web"],"min_ok_version":"4.0.0","tools":["browser"],"entrypoint":"ok-browser-mcp","transport":"stdio","capabilities":{"network":true}}

@@ -1,0 +1,346 @@
+package control
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"strconv"
+	"strings"
+
+	"github.com/NB-Agent/ok/internal/billing"
+	"github.com/NB-Agent/ok/internal/command"
+	"github.com/NB-Agent/ok/internal/config"
+	"github.com/NB-Agent/ok/internal/core"
+	"github.com/NB-Agent/ok/internal/dstsetup"
+	"github.com/NB-Agent/ok/internal/hook"
+	"github.com/NB-Agent/ok/internal/jobs"
+	"github.com/NB-Agent/ok/internal/permission"
+	"github.com/NB-Agent/ok/internal/provider"
+	"github.com/NB-Agent/ok/internal/skill"
+)
+
+// --- query accessors ---
+
+// Run sends input directly to the runner (bypassing Submit's slash dispatch and
+// @-ref expansion). Used by headless/ACP callers that compose their own input.
+func (c *Controller) Run(ctx context.Context, input string) error {
+	return c.runner.Run(ctx, input)
+}
+
+// History returns the executor's current message log.
+func (c *Controller) History() []provider.Message {
+	if c.executor == nil {
+		return nil
+	}
+	return c.executor.Session().Snapshot()
+}
+
+// ContextSnapshot returns (promptTokens, contextWindow) from the most recent turn.
+func (c *Controller) ContextSnapshot() (int, int) {
+	if c.executor == nil {
+		return 0, 0
+	}
+	u := c.executor.LastUsage()
+	if u == nil {
+		return 0, c.executor.ContextWindow()
+	}
+	return u.PromptTokens, c.executor.ContextWindow()
+}
+
+// LastUsage returns the most recent turn's token telemetry (nil before the first turn).
+func (c *Controller) LastUsage() *provider.Usage {
+	if c.executor == nil {
+		return nil
+	}
+	return c.executor.LastUsage()
+}
+
+// SessionCache returns cumulative cache hit/miss prompt tokens for the session.
+func (c *Controller) SessionCache() (hit, miss int) {
+	if c.executor == nil {
+		return 0, 0
+	}
+	return c.executor.SessionCache()
+}
+
+// Balance queries the active provider's wallet balance, or (nil, nil) when the
+// provider declares no balance_url.
+func (c *Controller) Balance(ctx context.Context) (*billing.Balance, error) {
+	if strings.TrimSpace(c.balanceURL) == "" {
+		return nil, nil
+	}
+	return billing.Fetch(ctx, c.balanceURL, c.balanceKey)
+}
+
+// Commands returns the loaded custom slash commands.
+func (c *Controller) Commands() []command.Command { return c.commands }
+
+// Skills returns the discoverable skills.
+func (c *Controller) Skills() []skill.Skill { return c.skills }
+
+// HookRunner returns the session's hook runner (nil-safe; may hold zero hooks).
+func (c *Controller) HookRunner() *hook.Runner { return c.hooks }
+
+// DSTBrain returns the single DST facade (nil when DST is unavailable).
+func (c *Controller) DSTBrain() *dstsetup.DSTRunner { return c.dst }
+
+// IsDSTAvailable reports whether the DST brain is initialised and available.
+func (c *Controller) IsDSTAvailable() bool { return c.dst != nil && c.dst.IsAvailable() }
+
+// SetDSTEnabled turns per-step DST verification on or off.
+func (c *Controller) SetDSTEnabled(v bool) {
+	if c.dst == nil {
+		return
+	}
+	if v {
+		c.dst.Enable()
+	} else {
+		c.dst.Disable()
+	}
+}
+
+// DSTEnabled reports whether DST per-step verification is active.
+func (c *Controller) DSTEnabled() bool {
+	if c.dst == nil {
+		return false
+	}
+	return c.dst.IsEnabled()
+}
+
+// Jobs returns the still-running background jobs for the status bar.
+func (c *Controller) Jobs() []jobs.View {
+	if c.jobs == nil {
+		return nil
+	}
+	return c.jobs.Running()
+}
+
+// AuditLog returns the complete audit trail.
+func (c *Controller) AuditLog() []core.AuditRecord {
+	if c.executor == nil {
+		return nil
+	}
+	return c.executor.AuditLog()
+}
+
+// AuditLogJSON returns the audit trail as a JSON string.
+func (c *Controller) AuditLogJSON() (string, error) {
+	records := c.AuditLog()
+	if records == nil {
+		return "[]", nil
+	}
+	data, err := json.MarshalIndent(records, "", "  ")
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
+// --- audit display ---
+
+func (c *Controller) showAudit() {
+	records := c.AuditLog()
+	if len(records) == 0 {
+		c.notice("audit: empty (auditing disabled or no tools called yet)")
+		return
+	}
+	// Verify chain integrity.
+	if c.auditChain != nil {
+		if err := c.auditChain.VerifyChain(); err != nil {
+			c.notice("audit: ❌ CHAIN BROKEN — " + err.Error())
+		} else {
+			c.notice("audit: ✅ chain verified — " + itoa(c.auditChain.Len()) + " entries intact")
+		}
+	}
+	// Show last 15 entries.
+	start := 0
+	if len(records) > 15 {
+		start = len(records) - 15
+	}
+	for _, r := range records[start:] {
+		tag := "✓"
+		if !r.Allowed {
+			tag = "✗ BLOCKED"
+		}
+		c.notice(fmt.Sprintf("[%d] %s %s — %s", r.Index, tag, r.Tool, r.Timestamp.Format("15:04:05")))
+	}
+}
+
+func itoa(n int) string { return strconv.Itoa(n) }
+
+func (c *Controller) showSearch(term string) {
+	msgs := c.History()
+	term = strings.ToLower(strings.TrimSpace(term))
+	if term == "" {
+		c.notice("/search <term> — search conversation history")
+		return
+	}
+	count := 0
+	for _, m := range msgs {
+		if strings.Contains(strings.ToLower(m.Content), term) {
+			c.notice(fmt.Sprintf("[%s] %s", string(m.Role), clipRunes(m.Content, 200)))
+			count++
+			if count >= 10 {
+				c.notice("… (10 matches shown; refine your search for more)")
+				break
+			}
+		}
+	}
+	if count == 0 {
+		c.notice("no matches for \"" + term + "\"")
+	}
+}
+
+func clipRunes(s string, max int) string {
+	r := []rune(s)
+	if len(r) <= max {
+		return s
+	}
+	return string(r[:max]) + "…"
+}
+
+// --- permissions management ---
+
+// handlePermissions processes /permissions slash commands.
+func (c *Controller) handlePermissions(input string) {
+	parts := strings.Fields(input)
+	if len(parts) == 1 {
+		c.showPermissions()
+		return
+	}
+	sub := parts[1]
+	switch sub {
+	case "allow", "ask", "deny":
+		if len(parts) < 3 {
+			c.notice(fmt.Sprintf("usage: /permissions %s <rule>", sub))
+			return
+		}
+		c.addPermission(sub, parts[2])
+	case "remove":
+		if len(parts) < 3 {
+			c.notice("usage: /permissions remove <rule>")
+			return
+		}
+		c.removePermission(parts[2])
+	case "reset":
+		c.resetPermissions()
+	case "save":
+		if err := c.savePermissions(); err != nil {
+			c.notice("permissions: save failed: " + err.Error())
+		} else {
+			c.notice("permissions saved to ok.toml")
+		}
+	default:
+		c.notice("unknown subcommand: " + sub)
+	}
+}
+
+func (c *Controller) showPermissions() {
+	ruleStr := func(rules []permission.Rule) []string {
+		out := make([]string, len(rules))
+		for i, r := range rules {
+			if r.Subject != "" {
+				out[i] = r.Tool + "(" + r.Subject + ")"
+			} else {
+				out[i] = r.Tool
+			}
+		}
+		return out
+	}
+	join := func(ss []string) string {
+		if len(ss) == 0 {
+			return "(none)"
+		}
+		return strings.Join(ss, ", ")
+	}
+	c.notice("── Permissions ──")
+	c.notice("Allow: " + join(ruleStr(c.policy.Allow)))
+	c.notice("Ask:   " + join(ruleStr(c.policy.Ask)))
+	c.notice("Deny:  " + join(ruleStr(c.policy.Deny)))
+}
+
+func (c *Controller) addPermission(kind, rule string) {
+	r, ok := permission.ParseRule(rule)
+	if !ok {
+		c.notice("invalid rule: " + rule)
+		return
+	}
+	c.mu.Lock()
+	switch kind {
+	case "allow":
+		c.policy.Allow = append(c.policy.Allow, r)
+	case "ask":
+		c.policy.Ask = append(c.policy.Ask, r)
+	case "deny":
+		c.policy.Deny = append(c.policy.Deny, r)
+	}
+	c.mu.Unlock()
+	c.notice("added " + kind + ": " + formatRuleStr(r))
+}
+
+func formatRuleStr(r permission.Rule) string {
+	if r.Subject != "" {
+		return r.Tool + "(" + r.Subject + ")"
+	}
+	return r.Tool
+}
+
+func (c *Controller) removePermission(rule string) {
+	r, ok := permission.ParseRule(rule)
+	if !ok {
+		c.notice("invalid rule: " + rule)
+		return
+	}
+	c.mu.Lock()
+	n := len(c.policy.Allow) + len(c.policy.Ask) + len(c.policy.Deny)
+	c.policy.Allow = removeRule(c.policy.Allow, r)
+	c.policy.Ask = removeRule(c.policy.Ask, r)
+	c.policy.Deny = removeRule(c.policy.Deny, r)
+	m := len(c.policy.Allow) + len(c.policy.Ask) + len(c.policy.Deny)
+	c.mu.Unlock()
+	if n > m {
+		c.notice("removed: " + formatRuleStr(r))
+	} else {
+		c.notice("rule not found: " + formatRuleStr(r))
+	}
+}
+
+func removeRule(slice []permission.Rule, r permission.Rule) []permission.Rule {
+	filtered := slice[:0]
+	for _, r2 := range slice {
+		if r2.Tool != r.Tool || r2.Subject != r.Subject {
+			filtered = append(filtered, r2)
+		}
+	}
+	return filtered
+}
+
+func (c *Controller) resetPermissions() {
+	c.policy.Allow = nil
+	c.policy.Ask = nil
+	c.policy.Deny = nil
+	c.notice("all permissions reset — use /permissions save to persist")
+}
+
+func (c *Controller) savePermissions() error {
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	cfg.Mode.Allow = ruleStrings(c.policy.Allow)
+	cfg.Mode.Ask = ruleStrings(c.policy.Ask)
+	cfg.Mode.Deny = ruleStrings(c.policy.Deny)
+	return cfg.Save()
+}
+
+func ruleStrings(rules []permission.Rule) []string {
+	out := make([]string, len(rules))
+	for i, r := range rules {
+		if r.Subject != "" {
+			out[i] = r.Tool + "(" + r.Subject + ")"
+		} else {
+			out[i] = r.Tool
+		}
+	}
+	return out
+}

@@ -1,0 +1,12 @@
+{
+  "name": "@ok/digest",
+  "version": "1.0.0",
+  "description": "Hashing (MD5/SHA1/SHA256/SHA512), Base64, Hex, JSON format/validate, text counting",
+  "author": "OK Team",
+  "license": "MIT",
+  "tags": ["hash", "encoding", "json", "utility"],
+  "min_ok_version": "4.0.0",
+  "tools": ["digest_hash", "digest_base64", "digest_hex", "digest_count", "digest_json"],
+  "entrypoint": "ok-digest-mcp",
+  "transport": "stdio"
+}

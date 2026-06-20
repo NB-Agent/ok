@@ -1,0 +1,26 @@
+{
+  "name": "@colbymchenry/ok",
+  "version": "0.9.7",
+  "description": "AI coding agent with OS-level sandbox and task sub-agents",
+  "bin": {
+    "ok": "bin/ok",
+    "ok-plugin-example": "bin/ok-plugin-example"
+  },
+  "files": [
+    "bin/",
+    "install.js"
+  ],
+  "scripts": {
+    "postinstall": "node install.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/colbymchenry/ok"
+  },
+  "keywords": ["ai", "coding", "agent", "cli", "sandbox", "llm"],
+  "license": "MIT",
+  "os": ["darwin", "linux", "win32"],
+  "engines": {
+    "node": ">=16"
+  }
+}

@@ -1,0 +1,1 @@
+{"name":"@ok/repo","version":"1.0.0","description":"Multi-repository management: add, list, switch, run, info, remove","author":"OK Team","license":"MIT","tags":["repo","git","workspace"],"min_ok_version":"4.0.0","tools":["repo"],"entrypoint":"ok-repo-mcp","transport":"stdio"}

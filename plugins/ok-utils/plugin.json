@@ -1,0 +1,12 @@
+{
+  "name": "@ok/utils",
+  "version": "1.0.0",
+  "description": "Utility tools: schedule, undo, plan, todo, complete-step, auto-heal, self-scan, capabilities, covenant, style-check, go-profile, vuln-check",
+  "author": "OK Team",
+  "license": "MIT",
+  "tags": ["utility", "scheduler", "profiler", "linter"],
+  "min_ok_version": "4.0.0",
+  "tools": ["schedule", "undo", "plan", "todo_write", "complete_step", "auto_heal", "self_scan", "capabilities", "covenant", "style_check", "go_profile", "vuln_check"],
+  "entrypoint": "ok-utils-mcp",
+  "transport": "stdio"
+}
