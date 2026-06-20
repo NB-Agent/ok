@@ -1,0 +1,58 @@
+name: Release Desktop
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  desktop:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: desktop/frontend/pnpm-lock.yaml
+
+      - name: Install pnpm
+        run: corepack enable && corepack prepare pnpm@latest --activate
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+
+      - name: Build frontend
+        working-directory: desktop/frontend
+        run: |
+          pnpm install
+          pnpm build
+
+      - name: Build desktop app
+        working-directory: desktop
+        run: wails build -production -trimpath
+
+      - name: Wait for Release and Upload
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $exe = "desktop/build/bin/ok.exe"
+          # Wait up to 5 min for goreleaser to create the release
+          for ($i = 0; $i -lt 60; $i++) {
+            $rel = gh release view $tag --json id 2>$null
+            if ($rel) { break }
+            Start-Sleep -Seconds 5
+          }
+          gh release upload $tag $exe --clobber
