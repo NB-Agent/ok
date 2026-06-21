@@ -14,9 +14,6 @@ jobs:
       matrix:
         goos: [linux, darwin, windows]
         goarch: [amd64, arm64]
-        exclude:
-          - goos: darwin
-            goarch: '386'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -43,10 +40,36 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p dist
-          # First run creates the release; subsequent runs upload
           gh release create "${{ github.ref_name }}" \
             --title "${{ github.ref_name }}" \
             --generate-notes \
             "dist/${{ env.binary }}" 2>/dev/null || \
           gh release upload "${{ github.ref_name }}" \
             "dist/${{ env.binary }}" --clobber
+
+  # ─── Desktop binary (Windows only, needs CGo + webview2) ──
+  desktop:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+
+      - name: Build desktop
+        run: |
+          go build -C desktop -tags desktop,wv2runtime.download,production `
+            -trimpath -ldflags="-s -w" `
+            -o "../dist/ok-windows-desktop.exe" .
+        shell: pwsh
+
+      - name: Upload to Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.ref_name }}" dist/ok-windows-desktop.exe --clobber
+        shell: pwsh
