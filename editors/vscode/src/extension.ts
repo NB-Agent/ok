@@ -2,8 +2,13 @@ import * as vscode from 'vscode';
 import { OkWebviewViewProvider } from './webviewProvider';
 import * as cp from 'child_process';
 import * as http from 'http';
+import * as https from 'https';
+import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+
+// GitHub repo for binary downloads
+const GITHUB_REPO = 'ok-ai/ok';
 
 // ---------------------------------------------------------------------------
 // State
@@ -13,12 +18,14 @@ let outputChannel: vscode.OutputChannel;
 let okProcess: cp.ChildProcess | undefined;
 let webviewProvider: OkWebviewViewProvider | undefined;
 let okPort = 8787;
+let resolvedBinaryPath: string | undefined;
 
 // ---------------------------------------------------------------------------
 // OK Server — manage ok serve lifecycle
 // ---------------------------------------------------------------------------
 
 function okPath(): string {
+    if (resolvedBinaryPath) return resolvedBinaryPath;
     const cfg = vscode.workspace.getConfiguration('ok');
     return cfg.get<string>('binaryPath', 'ok');
 }
@@ -78,6 +85,133 @@ function healthCheck(port: number): Promise<void> {
 
 function sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// ---------------------------------------------------------------------------
+// Binary download — auto-download ok CLI from GitHub Releases
+// ---------------------------------------------------------------------------
+
+/** Map Node.js platform/arch to GitHub Release asset name */
+function platformAssetName(): string | null {
+    const platMap: Record<string, string> = {
+        win32: 'windows',
+        darwin: 'darwin',
+        linux: 'linux',
+    };
+    const archMap: Record<string, string> = {
+        x64: 'amd64',
+        arm64: 'arm64',
+    };
+    const goos = platMap[process.platform];
+    const goarch = archMap[process.arch];
+    if (!goos || !goarch) return null;
+    const ext = process.platform === 'win32' ? '.exe' : '';
+    return `ok-${goos}-${goarch}${ext}`;
+}
+
+/** Download a file from a URL to a local path (handles GitHub redirects) */
+async function downloadFile(url: string, destPath: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+        const file = fs.createWriteStream(destPath);
+        const doGet = (u: string) => {
+            https.get(u, (res) => {
+                if (res.statusCode !== null && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+                    file.close();
+                    fs.unlinkSync(destPath);
+                    doGet(res.headers.location);
+                    return;
+                }
+                if (res.statusCode !== 200) {
+                    file.close();
+                    fs.unlinkSync(destPath);
+                    reject(new Error(`Download failed: HTTP ${res.statusCode}`));
+                    return;
+                }
+                res.pipe(file);
+                file.on('finish', () => { file.close(); resolve(); });
+            }).on('error', (err) => {
+                file.close();
+                try { fs.unlinkSync(destPath); } catch { /* ignore */ }
+                reject(err);
+            });
+        };
+        doGet(url);
+    });
+}
+
+/**
+ * Ensure the ok binary is available. Resolution chain:
+ * 1. User-configured `ok.binaryPath` (if non-default) — check existence
+ * 2. System PATH — `which ok` / `where ok`
+ * 3. Cached download under `globalStorageUri`
+ * 4. Download from GitHub Releases latest → cache
+ */
+async function ensureBinary(context: vscode.ExtensionContext): Promise<string> {
+    // Step 1: user-configured custom path
+    const cfg = vscode.workspace.getConfiguration('ok');
+    const configured = cfg.get<string>('binaryPath', 'ok');
+    if (configured !== 'ok') {
+        try {
+            await fs.promises.access(configured, fs.constants.R_OK);
+            outputChannel.appendLine(`[OK] Using configured binary: ${configured}`);
+            return configured;
+        } catch {
+            outputChannel.appendLine(`[OK] Configured binary not found at "${configured}", falling back`);
+        }
+    }
+
+    // Step 2: system PATH
+    try {
+        const whichCmd = process.platform === 'win32' ? 'where ok' : 'which ok';
+        const result = await new Promise<string>((resolve, reject) => {
+            cp.exec(whichCmd, (err, stdout) => {
+                if (err) reject(err);
+                else resolve(stdout.trim().split('\n')[0]);
+            });
+        });
+        if (result) {
+            outputChannel.appendLine(`[OK] Found ok in PATH: ${result}`);
+            return result;
+        }
+    } catch {
+        // not in PATH, continue
+    }
+
+    // Step 3-4: cached or download
+    const assetName = platformAssetName();
+    if (!assetName) {
+        throw new Error(
+            `Unsupported platform ${process.platform}/${process.arch}. ` +
+            'Please install ok manually from https://github.com/ok-ai/ok/releases',
+        );
+    }
+
+    const cacheDir = context.globalStorageUri.fsPath;
+    const cachedPath = path.join(cacheDir, assetName);
+
+    // Step 3: check cache
+    try {
+        await fs.promises.access(cachedPath, fs.constants.R_OK);
+        outputChannel.appendLine(`[OK] Using cached binary: ${cachedPath}`);
+        return cachedPath;
+    } catch {
+        // not cached, download
+    }
+
+    // Step 4: download
+    outputChannel.appendLine(`[OK] Downloading ok binary (${assetName})...`);
+    const downloadUrl = `https://github.com/${GITHUB_REPO}/releases/latest/download/${assetName}`;
+
+    await fs.promises.mkdir(cacheDir, { recursive: true });
+    await downloadFile(downloadUrl, cachedPath);
+
+    // Set executable bit on Unix
+    if (process.platform !== 'win32') {
+        await fs.promises.chmod(cachedPath, 0o755);
+    }
+
+    outputChannel.appendLine(`[OK] Binary downloaded to: ${cachedPath}`);
+    return cachedPath;
 }
 
 async function stopOkServer(): Promise<void> {
@@ -351,6 +485,15 @@ export async function activate(context: vscode.ExtensionContext) {
     outputChannel = vscode.window.createOutputChannel('OK Agent');
     outputChannel.appendLine('OK Agent activating...');
 
+    // --- Ensure ok binary is available ---
+    try {
+        resolvedBinaryPath = await ensureBinary(context);
+    } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        outputChannel.appendLine(`Failed to locate ok binary: ${msg}. Will try PATH as fallback.`);
+        // resolvedBinaryPath stays undefined → okPath() falls back to config/PATH
+    }
+
     // --- Start OK server ---
     try {
         okPort = await startOkServer();
@@ -359,7 +502,10 @@ export async function activate(context: vscode.ExtensionContext) {
         const msg = err instanceof Error ? err.message : String(err);
         outputChannel.appendLine(`Failed to start OK server: ${msg}`);
         vscode.window.showWarningMessage(
-            `OK server could not start: ${msg}. Install OK and ensure 'ok' is in PATH.`,
+            `OK server could not start: ${msg}. ` +
+            `Make sure the ok CLI is installed.\n` +
+            `• Auto-download: restart VS Code after the extension activates.\n` +
+            `• Manual: install from github.com/ok-ai/ok/releases and add to PATH.`,
         );
     }
 

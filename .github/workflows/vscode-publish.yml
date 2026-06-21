@@ -1,10 +1,14 @@
-name: Publish VS Code Extension
+name: Package VSIX for GitHub Release
+
 on:
   push:
     tags: ['vscode-v*']
+
 jobs:
-  publish:
+  package:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -12,7 +16,9 @@ jobs:
           node-version: 20
       - run: cd editors/vscode && npm install
       - run: cd editors/vscode && npm run compile
-      - name: Publish to Marketplace
-        run: cd editors/vscode && npx @vscode/vsce publish
+      - name: Package VSIX
+        run: cd editors/vscode && npx @vscode/vsce package
+      - name: Upload VSIX to Release
+        run: gh release upload "$GITHUB_REF_NAME" editors/vscode/*.vsix --clobber
         env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+          GH_TOKEN: ${{ github.token }}
