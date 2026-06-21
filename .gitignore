@@ -44,4 +44,8 @@
 /build/bin/ticket/
 /build/bin/user/
 
+# Editor backup files
+*~
 
+# Session episodic memory — local-only, not for sharing
+.ok/memory/episodic/
