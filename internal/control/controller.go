@@ -247,7 +247,7 @@ func New(opts Options) *Controller {
 		approval:        NewApprovalManager(sink),
 		onRemember:      opts.OnRemember,
 		envDiagnosis:    opts.EnvDiagnosis,
-		envDiagInterval: 5,
+		envDiagInterval: 20,
 	}
 	ctrl.baseCtx, ctrl.baseCancel = context.WithCancel(context.Background())
 	// Wire the message bus into the executor for tool/turn pub-sub events.

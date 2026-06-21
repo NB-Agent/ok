@@ -34,6 +34,11 @@ type Options struct {
 // Load discovers all memory for a session: the hierarchical docs and the
 // auto-memory index. It is best-effort and never errors — missing files just
 // mean less memory — so boot can call it unconditionally.
+//
+// On every load, the auto-memory store is compacted: oldest entries beyond
+// MaxMemoryEntries are deleted and the index is rebuilt. This prevents
+// unbounded growth from auto-learned entries and keeps the disk footprint small.
+// Runs inside the ok process — not subject to sandbox file-access restrictions.
 func Load(opts Options) *Set {
 	cwd := opts.CWD
 	if cwd == "" {
@@ -43,6 +48,7 @@ func Load(opts Options) *Set {
 	if store.Dir == "" {
 		store = StoreFor(opts.UserDir, cwd)
 	}
+	store.Compact()
 	return &Set{
 		Docs:    discoverDocs(cwd, opts.UserDir),
 		Store:   store,

@@ -43,7 +43,7 @@ type Agent struct {
 	toolCache        map[string]toolCacheEntry
 	toolCacheVer     uint64
 	toolCacheMu      sync.RWMutex
-	compactedLastMu  sync.Mutex   // dedicated lock — was borrowing toolCacheMu (audit #4)
+	compactedLastMu  sync.Mutex // dedicated lock — was borrowing toolCacheMu (audit #4)
 	compactedLast    bool
 	streamAvgLatency time.Duration // sliding average of stream() call latency
 	auditChain       *core.AuditChain

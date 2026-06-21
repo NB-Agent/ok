@@ -82,7 +82,8 @@ func (t *toolGroupsTool) Execute(ctx context.Context, args json.RawMessage) (str
 
 		t.reg.ActivateGroups(cleaned...)
 
-		return fmt.Sprintf("✅ Activated tool groups: %s\nNow visible: %d tools", strings.Join(cleaned, ", "), t.reg.Len()), nil
+		return fmt.Sprintf("✅ Will activate tool groups on next turn: %s\n(Deferred to keep prompt cache warm — current turn uses unchanged schemas.)",
+			strings.Join(cleaned, ", ")), nil
 
 	default:
 		return "", fmt.Errorf("unknown action: %s", p.Action)

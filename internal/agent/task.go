@@ -389,7 +389,7 @@ func FilterRegistry(parent *tool.Registry, names []string, exclude ...string) *t
 	sub := tool.NewRegistry()
 	src := names
 	if len(src) == 0 {
-		src = parent.AllNames()
+		src = parent.Names()
 	}
 	ex := make(map[string]bool, len(exclude))
 	for _, e := range exclude {

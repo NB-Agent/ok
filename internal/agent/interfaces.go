@@ -8,7 +8,24 @@ import (
 	"github.com/NB-Agent/ok/internal/event"
 )
 
-const maxToolOutputBytes = 32 * 1024
+// maxToolOutputBytes returns the per-tool output truncation limit.
+// When contextWindow is available (non-zero), use contextWindow/32 clamped
+// to [16KB, 128KB]. Otherwise fall back to 32KB.
+func maxToolOutputBytes(contextWindow int) int {
+	switch {
+	case contextWindow <= 0:
+		return 32 * 1024
+	case contextWindow < 512*1024:
+		return 16 * 1024
+	default:
+		n := contextWindow / 32
+		if n > 128*1024 {
+			return 128 * 1024
+		}
+		return n
+	}
+}
+
 const defaultToolTimeout = 15 * time.Minute
 
 type Renderer interface{ Render(string) string }

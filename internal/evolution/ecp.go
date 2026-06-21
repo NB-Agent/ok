@@ -8,9 +8,9 @@
 //
 // Protocol layers:
 //
-//   ECP/1.0 — Core types and serialization (this file)
-//   ECP/1.1 — Federation and trust model
-//   ECP/1.2 — Peer discovery and synchronization
+//	ECP/1.0 — Core types and serialization (this file)
+//	ECP/1.1 — Federation and trust model
+//	ECP/1.2 — Peer discovery and synchronization
 //
 // This file implements ECP/1.0: the type system and transport-neutral
 // message definitions. The actual transport (HTTP, WebSocket, gRPC) is
@@ -45,7 +45,7 @@ type ECPSkillPacket struct {
 	SkillName        string   `json:"skillName"`
 	SkillDescription string   `json:"skillDescription"`
 	SkillBody        string   `json:"skillBody"`
-	Patterns         []string `json:"patterns"`  // detected patterns that triggered generation
+	Patterns         []string `json:"patterns"`   // detected patterns that triggered generation
 	Confidence       float64  `json:"confidence"` // 0.0–1.0, how confident the generator was
 
 	// Integrity.
@@ -53,49 +53,49 @@ type ECPSkillPacket struct {
 
 	// Privacy flags.
 	Shareable  bool     `json:"shareable"`  // can be federated to other instances
-	Tags       []string `json:"tags"`        // categorization tags
+	Tags       []string `json:"tags"`       // categorization tags
 	Deprecated bool     `json:"deprecated"` // true when superseded by a newer version
 }
 
 // ECPKnowledgeUpdate is an aggregated knowledge snapshot from a peer instance.
 // It carries multiple skill packets and usage statistics.
 type ECPKnowledgeUpdate struct {
-	ID            string            `json:"id"`
-	PeerInstance  string            `json:"peerInstance"`
-	GeneratedAt   time.Time         `json:"generatedAt"`
-	Skills        []ECPSkillPacket  `json:"skills"`
-	Stats         ECPPeerStats      `json:"stats"`
-	SequenceNum   int64             `json:"sequenceNum"` // monotonic update counter
+	ID           string           `json:"id"`
+	PeerInstance string           `json:"peerInstance"`
+	GeneratedAt  time.Time        `json:"generatedAt"`
+	Skills       []ECPSkillPacket `json:"skills"`
+	Stats        ECPPeerStats     `json:"stats"`
+	SequenceNum  int64            `json:"sequenceNum"` // monotonic update counter
 }
 
 // ECPPeerStats carries aggregate statistics about a peer's evolution.
 type ECPPeerStats struct {
-	TotalSkills       int     `json:"totalSkills"`
-	TotalExtractions  int64   `json:"totalExtractions"`
-	AvgConfidence     float64 `json:"avgConfidence"`
-	UptimeHours       float64 `json:"uptimeHours"`
-	TopWorkflows      []string `json:"topWorkflows"` // most frequent workflow names
+	TotalSkills      int      `json:"totalSkills"`
+	TotalExtractions int64    `json:"totalExtractions"`
+	AvgConfidence    float64  `json:"avgConfidence"`
+	UptimeHours      float64  `json:"uptimeHours"`
+	TopWorkflows     []string `json:"topWorkflows"` // most frequent workflow names
 }
 
 // ECPManifest describes what knowledge a peer has available for sharing.
 // Used during peer discovery to decide what to sync.
 type ECPManifest struct {
-	Instance     string    `json:"instance"`
-	Version      string    `json:"version"`
-	GeneratedAt  time.Time `json:"generatedAt"`
-	SequenceNum  int64     `json:"sequenceNum"`
-	SkillCount   int       `json:"skillCount"`
-	SkillNames   []string  `json:"skillNames"`   // for lightweight discovery
-	TopTags      []string  `json:"topTags"`       // for topic-based filtering
-	LastUpdate   time.Time `json:"lastUpdate"`
+	Instance    string    `json:"instance"`
+	Version     string    `json:"version"`
+	GeneratedAt time.Time `json:"generatedAt"`
+	SequenceNum int64     `json:"sequenceNum"`
+	SkillCount  int       `json:"skillCount"`
+	SkillNames  []string  `json:"skillNames"` // for lightweight discovery
+	TopTags     []string  `json:"topTags"`    // for topic-based filtering
+	LastUpdate  time.Time `json:"lastUpdate"`
 }
 
 // ECPMergeResult describes the outcome of merging knowledge from a peer.
 type ECPMergeResult struct {
-	NewSkills     int      `json:"newSkills"`     // skills installed for the first time
-	UpdatedSkills int      `json:"updatedSkills"` // skills that were refreshed
-	RejectedSkills int     `json:"rejectedSkills"` // skills rejected (unsafe, duplicate, etc.)
-	Conflicts     []string `json:"conflicts"`     // skills that conflicted with local versions
+	NewSkills      int      `json:"newSkills"`      // skills installed for the first time
+	UpdatedSkills  int      `json:"updatedSkills"`  // skills that were refreshed
+	RejectedSkills int      `json:"rejectedSkills"` // skills rejected (unsafe, duplicate, etc.)
+	Conflicts      []string `json:"conflicts"`      // skills that conflicted with local versions
 }
 
 // ─── Packet creation ──────────────────────────────────────────────────────
@@ -112,7 +112,7 @@ func NewECPSkillPacket(
 	userHash := sha256.Sum256([]byte(userID))
 
 	return ECPSkillPacket{
-		ID:              hex.EncodeToString(hash[:8]),
+		ID:               hex.EncodeToString(hash[:8]),
 		Version:          "1.0",
 		CreatedAt:        time.Now().UTC(),
 		OriginInstance:   instance,
@@ -123,10 +123,10 @@ func NewECPSkillPacket(
 		SkillDescription: description,
 		SkillBody:        body,
 		Patterns:         patterns,
-		Confidence:        confidence,
+		Confidence:       confidence,
 		IntegrityHash:    hex.EncodeToString(hash[:]),
-		Shareable:         true,
-		Tags:              extractTags(patterns),
+		Shareable:        true,
+		Tags:             extractTags(patterns),
 	}
 }
 

@@ -17,8 +17,8 @@ import (
 // TestTruncateToolOutputUnderCap leaves small payloads alone — the cap should
 // never rewrite content that already fits.
 func TestTruncateToolOutputUnderCap(t *testing.T) {
-	in := strings.Repeat("a", maxToolOutputBytes)
-	got, notice := truncateToolOutput(in)
+	in := strings.Repeat("a", maxToolOutputBytes(0))
+	got, notice := truncateToolOutput(in, maxToolOutputBytes(0))
 	if got != in {
 		t.Errorf("payload at exactly the cap was rewritten")
 	}
@@ -30,10 +30,10 @@ func TestTruncateToolOutputUnderCap(t *testing.T) {
 // TestTruncateToolOutputHeadTail keeps head+tail of an oversize payload and
 // inserts a marker; the notice must report the elided byte count truthfully.
 func TestTruncateToolOutputHeadTail(t *testing.T) {
-	head := strings.Repeat("H", maxToolOutputBytes)
-	tail := strings.Repeat("T", maxToolOutputBytes)
+	head := strings.Repeat("H", maxToolOutputBytes(0))
+	tail := strings.Repeat("T", maxToolOutputBytes(0))
 	in := head + tail
-	out, notice := truncateToolOutput(in)
+	out, notice := truncateToolOutput(in, maxToolOutputBytes(0))
 	if !strings.HasPrefix(out, "H") || !strings.HasSuffix(out, "T") {
 		t.Errorf("head/tail not preserved at the edges: %q…%q", out[:20], out[len(out)-20:])
 	}
@@ -51,8 +51,8 @@ func TestTruncateToolOutputHeadTail(t *testing.T) {
 // TestTruncateToolOutputRuneBoundaries puts multibyte runes exactly across the
 // head and tail cut points; the result must still be valid UTF-8.
 func TestTruncateToolOutputRuneBoundaries(t *testing.T) {
-	in := strings.Repeat("中", maxToolOutputBytes) // 3 bytes each — guarantees a cut inside a rune
-	out, _ := truncateToolOutput(in)
+	in := strings.Repeat("中", maxToolOutputBytes(0)) // 3 bytes each — guarantees a cut inside a rune
+	out, _ := truncateToolOutput(in, maxToolOutputBytes(0))
 	if !utf8.ValidString(out) {
 		t.Errorf("truncated output is not valid UTF-8")
 	}

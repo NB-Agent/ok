@@ -20,7 +20,7 @@ type wakeWord struct{}
 func (wakeWord) Name() string { return "wake-word" }
 
 func (wakeWord) Description() string {
-	return "Listen for a wake word (default 'hey ok') in the background and trigger voice interaction. Requires a keyword-spotting engine (porcupine or vosk)."
+	return "Background wake-word listening ('hey ok'). Requires porcupine or vosk."
 }
 
 func (wakeWord) Schema() json.RawMessage {

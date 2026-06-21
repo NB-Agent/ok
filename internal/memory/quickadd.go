@@ -14,7 +14,11 @@ const quickAddHeading = "## Notes"
 // MaxQuickNotes caps the number of bullet entries under ## Notes in a
 // doc-memory file. Older entries are trimmed when new ones are added beyond
 // this limit, preventing unbounded prefix bloat.
-const MaxQuickNotes = 100
+const MaxQuickNotes = 30
+
+// maxQuickNoteLen caps the character length of a single quick-add note.
+// Notes exceeding this are truncated to keep the system-prompt prefix lean.
+const maxQuickNoteLen = 200
 
 // AppendDoc appends a one-line note as a bullet under a "## Notes" section in
 // the doc-memory file at path, creating the file (and section) when absent. The
@@ -27,6 +31,9 @@ const MaxQuickNotes = 100
 // silent overwrite.
 func AppendDoc(path, note string) error {
 	note = oneLine(note)
+	if len(note) > maxQuickNoteLen {
+		note = note[:maxQuickNoteLen] + "…"
+	}
 	if note == "" {
 		return nil
 	}

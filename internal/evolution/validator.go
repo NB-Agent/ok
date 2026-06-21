@@ -279,9 +279,7 @@ func extractToolNames(patterns []string) []string {
 			if len(parts) >= 2 {
 				for _, sig := range builtinSignatures {
 					if sig.Name == parts[0] {
-						for _, t := range sig.Tools {
-							names = append(names, t)
-						}
+						names = append(names, sig.Tools...)
 						break
 					}
 				}

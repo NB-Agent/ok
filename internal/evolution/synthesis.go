@@ -2,18 +2,18 @@
 //
 // Replaces the template-based generateSkillBody with a layered approach:
 //
-//   Layer 0 (automatic hook path, zero-LLM):
-//     generateSkillBody produces structured playbooks from detected patterns.
-//     This is the existing function, now enhanced with workflow-aware
-//     descriptions.
+//	Layer 0 (automatic hook path, zero-LLM):
+//	  generateSkillBody produces structured playbooks from detected patterns.
+//	  This is the existing function, now enhanced with workflow-aware
+//	  descriptions.
 //
-//   Layer 1 (Learn tool path, LLM-driven):
-//     SynthesizeSkill sends patterns + episodic context to the LLM and
-//     receives a high-quality skill prompt that captures:
-//       - When to invoke the skill
-//       - Step-by-step workflow
-//       - Expected outcomes and verification steps
-//       - Common pitfalls and edge cases
+//	Layer 1 (Learn tool path, LLM-driven):
+//	  SynthesizeSkill sends patterns + episodic context to the LLM and
+//	  receives a high-quality skill prompt that captures:
+//	    - When to invoke the skill
+//	    - Step-by-step workflow
+//	    - Expected outcomes and verification steps
+//	    - Common pitfalls and edge cases
 //
 // The resulting skill is usable immediately — not just a skeleton, but a
 // real instruction set the agent can follow.
@@ -55,7 +55,7 @@ func generateSkillBodyEnhanced(name string, patterns []string, workflowHints []s
 		}
 	}
 
-	desc := buildSkillDescription(name, patterns, workflowHints)
+	desc := buildSkillDescription(patterns, workflowHints)
 	trigger := buildTriggerSection(patterns)
 	steps := buildStepsSection(patterns)
 	verify := buildVerifySection(patterns)
@@ -153,7 +153,7 @@ func formatRepeatedPattern(p string) string {
 	return fmt.Sprintf("- `%s` (used %s times)", parts[1], parts[2])
 }
 
-func buildSkillDescription(name string, patterns []string, hints []string) string {
+func buildSkillDescription(patterns []string, hints []string) string {
 	var parts []string
 
 	// Extract tool names for description.
@@ -317,11 +317,11 @@ func uniqueStrings(ss []string) []string {
 
 // SynthesisRequest is the input to LLM-driven skill synthesis.
 type SynthesisRequest struct {
-	Name        string   `json:"name"`        // proposed skill name
-	Patterns    []string `json:"patterns"`     // detected patterns
-	Context     []string `json:"context"`      // recent episodic entries for context
-	Workflows   []string `json:"workflows"`    // detected workflow names
-	ToolNames   []string `json:"toolNames"`    // tools involved
+	Name      string   `json:"name"`      // proposed skill name
+	Patterns  []string `json:"patterns"`  // detected patterns
+	Context   []string `json:"context"`   // recent episodic entries for context
+	Workflows []string `json:"workflows"` // detected workflow names
+	ToolNames []string `json:"toolNames"` // tools involved
 }
 
 // SynthesisResult is the output of LLM-driven skill synthesis.

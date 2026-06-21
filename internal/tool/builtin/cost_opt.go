@@ -1,10 +1,10 @@
 // System prompt component sizes (measured):
-// - DefaultSystemPrompt:    ~2800 bytes (~700 tokens)
+// - DefaultSystemPrompt:    ~1900 bytes (~475 tokens)
 // - LanguagePolicy:        ~290 bytes  (~72 tokens)
 // - Memory/skills/env:     ~1500 bytes (~375 tokens)
 // - Tool schemas (36):     ~14723 bytes (~3680 tokens)
 // --------------------------------------------------
-// TOTAL per-turn prefix:   ~19313 bytes (~4827 tokens)
+// TOTAL per-turn prefix:   ~18413 bytes (~4602 tokens)
 //
 // Optimization targets:
 // 1. Minify schemas (-30% = -4400 bytes / -1100 tokens) ← BIGGEST WIN

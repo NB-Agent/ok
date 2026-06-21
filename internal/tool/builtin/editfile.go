@@ -24,7 +24,7 @@ type editFile struct {
 func (editFile) Name() string { return "edit_file" }
 
 func (editFile) Description() string {
-	return "Replace an exact string in a file. old_string must be unique in the file; add surrounding context to disambiguate. A unified diff is included in the result so you can verify the change."
+	return "Replace exact string in a file. old_string must be unique; add context to disambiguate. Unified diff included."
 }
 
 func (editFile) Schema() json.RawMessage {

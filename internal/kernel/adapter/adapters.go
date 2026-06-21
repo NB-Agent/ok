@@ -168,7 +168,7 @@ func (a *sandboxAdapter) Run(ctx context.Context, command string, opts RunOption
 	return RunResult{Output: buf.String(), ExitCode: 0}
 }
 
-func (a *sandboxAdapter) Available() bool { return sandbox.Available() }
+func (a *sandboxAdapter) Available() bool              { return sandbox.Available() }
 func (a *sandboxAdapter) PluginSpec() *PluginIsolation { return nil }
 
 func exitCode(err error) int {
@@ -505,19 +505,25 @@ func (a *grepAdapter) Search(_ context.Context, pattern, path string) ([]Match, 
 		return nil, fmt.Errorf("stat %s: %w", resolved, err)
 	}
 	if !info.IsDir() {
-		if err := searchFile(resolved); err != nil && err != io.EOF {
+		if err := searchFile(resolved); err != nil && !errors.Is(err, io.EOF) {
 			return nil, fmt.Errorf("grep %s: %w", resolved, err)
 		}
 	} else {
-		_ = filepath.Walk(resolved, func(path string, info os.FileInfo, err error) error {
-			if err != nil || info.IsDir() {
+		walkErr := filepath.Walk(resolved, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if info.IsDir() {
 				return nil
 			}
-			if err := searchFile(path); err != nil && err != io.EOF {
+			if err := searchFile(path); err != nil && !errors.Is(err, io.EOF) {
 				return err
 			}
 			return nil
 		})
+		if walkErr != nil {
+			return nil, fmt.Errorf("walk %s: %w", resolved, walkErr)
+		}
 	}
 
 	if truncated {

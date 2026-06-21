@@ -10,8 +10,8 @@ import (
 	"github.com/NB-Agent/ok/internal/config"
 	"github.com/NB-Agent/ok/internal/sandbox"
 
-	"golang.org/x/term"
 	"github.com/NB-Agent/ok/internal/i18n"
+	"golang.org/x/term"
 )
 
 func doctor() string {

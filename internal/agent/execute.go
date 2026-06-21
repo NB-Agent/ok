@@ -195,11 +195,6 @@ func (a *Agent) executeBatch(ctx context.Context, calls []provider.ToolCall) ([]
 			}
 		}
 	}
-	// Clear the read-only tool cache at batch boundaries — stale results
-	// from a previous batch are never safe to reuse across turns.
-	a.toolCacheMu.Lock()
-	a.toolCache = nil
-	a.toolCacheMu.Unlock()
 	return results, fatal.Load()
 }
 
@@ -421,7 +416,7 @@ func (a *Agent) executeOne(ctx context.Context, call provider.ToolCall) toolOutc
 		if errors.Is(err, context.DeadlineExceeded) {
 			err = fmt.Errorf("tool %q timed out after %v", call.Name, defaultToolTimeout)
 		}
-		body, truncMsg := truncateToolOutput(fmt.Sprintf("error: %v\n%s", err, result))
+		body, truncMsg := truncateToolOutput(fmt.Sprintf("error: %v\n%s", err, result), a.maxOutputBytes())
 		a.auditToolCall(call.Name, call.Arguments, body, false)
 		return toolOutcome{output: body, errMsg: firstLine(err.Error()), truncated: truncMsg != "", truncMsg: truncMsg}
 	}
@@ -435,7 +430,7 @@ func (a *Agent) executeOne(ctx context.Context, call provider.ToolCall) toolOutc
 			a.toolCache = make(map[string]toolCacheEntry, 256)
 		}
 		if len(a.toolCache) < 256 {
-			cached, _ := truncateToolOutput(result)
+			cached, _ := truncateToolOutput(result, a.maxOutputBytes())
 			a.toolCache[call.Name+"\x00"+call.Arguments] = toolCacheEntry{data: cached, ver: a.toolCacheVer}
 		}
 		// Evict one entry when the cache exceeds 256 due to concurrent
@@ -448,7 +443,7 @@ func (a *Agent) executeOne(ctx context.Context, call provider.ToolCall) toolOutc
 		}
 		a.toolCacheMu.Unlock()
 	}
-	body, truncMsg := truncateToolOutput(result)
+	body, truncMsg := truncateToolOutput(result, a.maxOutputBytes())
 	metrics.ToolResult()
 	a.auditToolCall(call.Name, call.Arguments, body, true)
 	return toolOutcome{output: body, truncated: truncMsg != "", truncMsg: truncMsg}
@@ -459,6 +454,11 @@ func (a *Agent) executeOne(ctx context.Context, call provider.ToolCall) toolOutc
 func (a *Agent) toolReadOnly(name string) bool {
 	t, ok := a.tools.GetAny(name)
 	return ok && t.ReadOnly()
+}
+
+// maxOutputBytes returns the adaptive truncation limit based on context window.
+func (a *Agent) maxOutputBytes() int {
+	return maxToolOutputBytes(a.contextWindow)
 }
 
 // canParallelise returns true iff every call targets a known, ReadOnly tool.

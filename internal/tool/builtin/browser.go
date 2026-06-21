@@ -25,10 +25,7 @@ func (browserTool) ReadOnly() bool       { return false }
 func (browserTool) CostCategory() string { return "slow" }
 
 func (browserTool) Description() string {
-	return "Control a headless Chrome browser. Navigate pages, click elements, " +
-		"type text, screenshots, extract text, execute JavaScript, fill forms. " +
-		"Use for any website interaction — login, SPAs, dynamic content. " +
-		"Requires Chrome/Chromium in PATH or set CHROME_PATH."
+	return "Headless Chrome automation — navigate, click, type, screenshot, extract text, JS eval, fill forms. Requires Chrome in PATH."
 }
 
 func (browserTool) Schema() json.RawMessage {

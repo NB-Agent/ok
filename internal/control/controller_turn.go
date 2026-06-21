@@ -157,6 +157,14 @@ func (c *Controller) runTurn(ctx context.Context, input string) error {
 	// (executor.Session().Save). If you want to persist a session goal, use
 	// `#<note>` or `remember` explicitly.
 
+	// Apply any pending tool-group switch from the previous turn so the
+	// new schemas take effect at a clean turn boundary. Deferring the
+	// switch keeps tool schemas byte-stable within each turn, preserving
+	// DeepSeek's prefix cache across consecutive API calls.
+	if c.reg != nil {
+		c.reg.ApplyPendingGroups()
+	}
+
 	if err := c.runner.Run(ctx, input); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) && c.executor != nil {
 			c.sink.Emit(&event.Event{Kind: event.Notice, Level: event.LevelWarn,

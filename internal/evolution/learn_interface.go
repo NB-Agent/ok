@@ -2,8 +2,8 @@
 //
 // This file makes evolution.Engine implement kernel.Learn, unifying the two
 // previously separate evolution paths:
-//   1. learnAdapter (adapters.go) — called by LLM via the "learn" tool
-//   2. evolution.Engine — called by OnTurnComplete hook automatically
+//  1. learnAdapter (adapters.go) — called by LLM via the "learn" tool
+//  2. evolution.Engine — called by OnTurnComplete hook automatically
 //
 // After this unification, learnAdapter delegates to evolution.Engine,
 // so both manual (LLM) and automatic (hook) evolution share one engine.
@@ -77,9 +77,11 @@ func (e *Engine) Generate(_ context.Context, patterns []kernel.Pattern) (kernel.
 }
 
 // Validate runs the full sandbox-validation pipeline on a skill:
-//   Layer 0 — structural completeness
-//   Layer 1 — safety pattern scan + tool reference check
-//   Layer 2 — duplicate name check
+//
+//	Layer 0 — structural completeness
+//	Layer 1 — safety pattern scan + tool reference check
+//	Layer 2 — duplicate name check
+//
 // Satisfies kernel.Learn.Validate.
 func (e *Engine) Validate(_ context.Context, skill kernel.Skill) error {
 	if skill.Name == "" || skill.Body == "" {

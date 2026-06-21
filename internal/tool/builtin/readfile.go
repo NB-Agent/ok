@@ -35,7 +35,7 @@ const (
 func (readFile) Name() string { return "read_file" }
 
 func (readFile) Description() string {
-	return "Read a text file with optional offset/limit. Output prefixes line numbers so edit_file can target exact lines. Large files support paging via offset+limit."
+	return "Read a text file with offset/limit. Line-numbered output. Supports paging for large files."
 }
 
 func (readFile) Schema() json.RawMessage {

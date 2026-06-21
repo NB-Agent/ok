@@ -15,9 +15,10 @@ import (
 	"github.com/NB-Agent/ok/internal/frontmatter"
 )
 
-// MaxMemoryEntries caps the number of auto-memory files. Beyond this limit the
-// oldest entries are pruned on each Save to keep the system-prompt prefix lean.
-const MaxMemoryEntries = 500
+// MaxMemoryEntries caps the number of auto-memory files per project. Beyond this
+// limit the oldest entries are pruned on each Save AND at load time to keep the
+// system-prompt prefix lean and prevent unbounded disk growth.
+const MaxMemoryEntries = 80
 
 // Store is the per-project auto-memory: a directory of one-fact-per-file
 // Markdown notes with frontmatter, plus a MEMORY.md index of one line per fact.
@@ -147,13 +148,14 @@ func (s Store) Save(m Memory) (string, error) {
 
 // prune deletes the oldest memory files when the store exceeds maxFiles,
 // keeping the index lean so the system prompt prefix stays small.
-func (s Store) prune(maxFiles int) {
+// Returns true if any files were deleted.
+func (s Store) prune(maxFiles int) bool {
 	if s.Dir == "" || maxFiles <= 0 {
-		return
+		return false
 	}
 	entries, err := os.ReadDir(s.Dir)
 	if err != nil {
-		return
+		return false
 	}
 	type entry struct {
 		name string
@@ -171,7 +173,7 @@ func (s Store) prune(maxFiles int) {
 		mems = append(mems, entry{name: e.Name(), mod: info.ModTime()})
 	}
 	if len(mems) <= maxFiles {
-		return
+		return false
 	}
 	// Sort by modification time ascending (oldest first) and delete the overflow.
 	sort.Slice(mems, func(i, j int) bool { return mems[i].mod.Before(mems[j].mod) })
@@ -179,6 +181,50 @@ func (s Store) prune(maxFiles int) {
 	for _, e := range toDelete {
 		os.Remove(filepath.Join(s.Dir, e.name))
 	}
+	return true
+}
+
+// Compact prunes oldest entries beyond MaxMemoryEntries. When files are
+// actually deleted, it also rebuilds the index so MEMORY.md never references
+// missing entries. When nothing is pruned, the index is left untouched — this
+// preserves cache stability (byte-identical system prefix) and any hand-edits
+// the user made to MEMORY.md. Idempotent; nil store or empty dir is a no-op.
+func (s Store) Compact() {
+	if s.Dir == "" {
+		return
+	}
+	cap := s.maxEntries
+	if cap <= 0 {
+		cap = MaxMemoryEntries
+	}
+	if !s.prune(cap) {
+		return // nothing deleted — index is already correct, don't touch it
+	}
+	// Files were deleted — rebuild the index from remaining files.
+	mems := s.List()
+	if len(mems) == 0 {
+		return
+	}
+	idxPath := filepath.Join(s.Dir, indexFile)
+	names := make([]string, 0, len(mems))
+	lines := make(map[string]string, len(mems))
+	for _, m := range mems {
+		n := slug(m.Name)
+		names = append(names, n)
+		lines[n] = fmt.Sprintf("- [%s](%s.md) — %s", n, n, oneLine(m.Description))
+	}
+	sort.Strings(names)
+	var b strings.Builder
+	b.WriteString("# Memory\n\n")
+	for _, n := range names {
+		b.WriteString(lines[n])
+		b.WriteString("\n")
+	}
+	tmp := idxPath + "." + randHex(4) + ".tmp"
+	if err := os.WriteFile(tmp, []byte(b.String()), 0o644); err != nil {
+		return
+	}
+	os.Rename(tmp, idxPath)
 }
 
 // render serializes a memory to frontmatter + body. The frontmatter mirrors the

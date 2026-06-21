@@ -22,7 +22,7 @@ func (okVerifyV2) Name() string   { return "ok-verify" }
 func (okVerifyV2) ReadOnly() bool { return true }
 
 func (okVerifyV2) Description() string {
-	return "Run 14 analyzers across all detected languages (Go/Python/JS-TS/Shell/Rust). External tools auto-detected if installed. Covers style, vulns, health, security, architecture. Zero token cost. Use instead of task() sub-agents for deep audit."
+	return "14 static analyzers across Go/Python/JS/TS/Shell/Rust. Zero-token deep audit. Use instead of task() sub-agents."
 }
 
 func (okVerifyV2) Schema() json.RawMessage {

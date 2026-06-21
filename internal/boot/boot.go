@@ -839,7 +839,9 @@ func assembleSystemPrompt(cfg *config.Config, mem *memory.Set, cwd string) (prom
 	}
 	prompt = raw + "\n\n" + config.LanguagePolicy
 	prompt = memory.Compose(prompt, mem)
-	if sharedIdx := memory.SharedStoreFor(config.MemoryUserDir()).Index(); sharedIdx != "" {
+	sharedStore := memory.SharedStoreFor(config.MemoryUserDir())
+	sharedStore.Compact()
+	if sharedIdx := sharedStore.Index(); sharedIdx != "" {
 		// Truncate to the first 30 entries so the shared section never bloats
 		// the cache-stable system-prompt prefix. Full index is available via
 		// recall/rag.

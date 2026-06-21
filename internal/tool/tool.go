@@ -124,6 +124,7 @@ type ToolRegistry interface {
 type RegistrySetGroups interface {
 	ToolRegistry
 	ActivateGroups(groups ...string)
+	ApplyPendingGroups()
 	AllNames() []string
 	ActiveGroupNames() []string
 }
@@ -134,6 +135,10 @@ type RegistrySetGroups interface {
 // Supports hierarchical tool groups: when groups are empty (default), all tools
 // are visible. When groups are set via ActivateGroups, only tools in those
 // groups are returned by Schemas/Names/Get — cutting schema token costs.
+//
+// Group switches are deferred: ActivateGroups sets pendingGroups, which is
+// applied at the start of the next turn via ApplyPendingGroups. This keeps
+// tool schemas byte-stable within a turn so DeepSeek's prefix cache stays warm.
 type Registry struct {
 	mu    sync.RWMutex
 	tools map[string]Tool
@@ -143,6 +148,9 @@ type Registry struct {
 	groups map[string]string
 	// activeGroups: set of group names currently visible. Empty = all visible.
 	activeGroups map[string]bool
+	// pendingGroups: groups to activate at the start of the next turn (via ApplyPendingGroups).
+	// nil = no pending change. Set by ActivateGroups, consumed by ApplyPendingGroups.
+	pendingGroups []string
 
 	// schema cache — invalidated on any Add/Remove/group change.
 	schemaGen      int64
@@ -206,15 +214,31 @@ func (r *Registry) SetGroup(name, group string) {
 	}
 }
 
-// ActivateGroups sets which groups are visible. Schemas/Names/Get will only
-// return tools in these groups. An empty or nil set = all tools visible (default).
+// ActivateGroups remembers the desired groups but does NOT apply them immediately.
+// The switch takes effect at the start of the next turn (via ApplyPendingGroups)
+// so tool schemas stay byte-stable within the current turn and DeepSeek's prefix
+// cache stays warm across API calls.
 func (r *Registry) ActivateGroups(groups ...string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.activeGroups = make(map[string]bool, len(groups))
-	for _, g := range groups {
+	r.pendingGroups = make([]string, len(groups))
+	copy(r.pendingGroups, groups)
+}
+
+// ApplyPendingGroups applies any group switch deferred by ActivateGroups.
+// Called at the start of each turn (before the first stream call).
+// Idempotent — a no-op when no pending switch exists.
+func (r *Registry) ApplyPendingGroups() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.pendingGroups == nil {
+		return
+	}
+	r.activeGroups = make(map[string]bool, len(r.pendingGroups))
+	for _, g := range r.pendingGroups {
 		r.activeGroups[g] = true
 	}
+	r.pendingGroups = nil
 	r.bumpSchemaGen()
 }
 

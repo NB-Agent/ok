@@ -3,20 +3,20 @@
 // Replaces the pure keyword-frequency approach (findPatterns) with a layered
 // detection system:
 //
-//   Layer 0 — Workflow signatures (zero-LLM, always available):
-//     Pre-defined workflow patterns matched against tool sequences + context
-//     hints. Catches "TDD workflow", "search-then-edit", "audit-before-deploy"
-//     etc. without any LLM call.
+//	Layer 0 — Workflow signatures (zero-LLM, always available):
+//	  Pre-defined workflow patterns matched against tool sequences + context
+//	  hints. Catches "TDD workflow", "search-then-edit", "audit-before-deploy"
+//	  etc. without any LLM call.
 //
-//   Layer 1 — Semantic analysis (LLM-driven, via Learn tool path):
-//     When a provider is available, the episodic corpus is analyzed by the
-//     LLM to extract abstract patterns ("user prefers incremental commits",
-//     "security review always precedes deployment"). This is the Learn
-//     interface's Extract path.
+//	Layer 1 — Semantic analysis (LLM-driven, via Learn tool path):
+//	  When a provider is available, the episodic corpus is analyzed by the
+//	  LLM to extract abstract patterns ("user prefers incremental commits",
+//	  "security review always precedes deployment"). This is the Learn
+//	  interface's Extract path.
 //
-//   Layer 2 — Cross-turn narrative patterns (zero-LLM):
-//     Aggregates tool frequency + sequence + temporal proximity into a
-//     "workflow fingerprint" that captures more signal than isolated counts.
+//	Layer 2 — Cross-turn narrative patterns (zero-LLM):
+//	  Aggregates tool frequency + sequence + temporal proximity into a
+//	  "workflow fingerprint" that captures more signal than isolated counts.
 package evolution
 
 import (
@@ -280,28 +280,6 @@ type AnalyzeRequest struct {
 	Entries []string `json:"entries"` // recent episodic memory entries
 	MaxN    int      `json:"maxN"`    // max insights to return
 }
-
-// systemPromptSemantic is the system prompt for the semantic analyzer.
-const systemPromptSemantic = `You are a semantic pattern detector for an AI agent's self-evolution engine.
-
-Analyze the episodic memory entries below. Each entry shows what the user asked
-(input) and what the agent did (output).
-
-Extract ABSTRACT WORKFLOW PATTERNS — not just tool names, but the user's
-working style, preferences, and recurring task structures.
-
-Examples of good patterns:
-- "User prefers TDD: writes test first, then implementation"
-- "Security audit always precedes deployment"
-- "User reviews diffs before committing"
-- "Incremental development: small edits followed by immediate testing"
-
-Respond with a JSON array of patterns:
-[{"pattern":"kebab-name","description":"...","confidence":0.8}]
-
-Confidence should reflect how consistently this pattern appears. Only return
-patterns you are reasonably confident about (confidence >= 0.5). Return [] if
-no clear patterns emerge.`
 
 // itoa is a lightweight integer-to-string converter (avoids importing fmt).
 func itoa(n int) string {

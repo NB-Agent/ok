@@ -40,7 +40,7 @@ var validEvidenceKinds = map[string]bool{
 func (completeStep) Name() string { return "complete_step" }
 
 func (completeStep) Description() string {
-	return "Sign off a finished plan step with evidence (verification, diff, or manual check). Pair with todo_write."
+	return "Sign off a plan step with evidence. Pair with todo_write."
 }
 
 func (completeStep) Schema() json.RawMessage {

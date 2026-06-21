@@ -22,7 +22,7 @@ type editStep = EditStep
 func (multiEdit) Name() string { return "multi_edit" }
 
 func (multiEdit) Description() string {
-	return "Apply ordered edits to a file atomically. All edits run in-memory; file is written only if every edit succeeds. Safer than chaining edit_file. A unified diff is included in the result."
+	return "Apply ordered edits atomically — all in-memory, written only if all succeed. Safer than chaining edit_file. Unified diff included."
 }
 
 func (multiEdit) Schema() json.RawMessage {

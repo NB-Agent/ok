@@ -208,9 +208,9 @@ type acTool struct {
 type acReq struct {
 	Model       string     `json:"model"`
 	MaxTokens   int        `json:"max_tokens"`
+	Tools       []acTool   `json:"tools,omitempty"`
 	System      []sysBlock `json:"system,omitempty"`
 	Messages    []acMsg    `json:"messages"`
-	Tools       []acTool   `json:"tools,omitempty"`
 	Stream      bool       `json:"stream"`
 	Temperature float64    `json:"temperature,omitempty"`
 }

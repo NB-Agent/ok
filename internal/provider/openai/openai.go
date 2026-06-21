@@ -400,8 +400,8 @@ func normaliseUsage(u *wireUsage) *provider.Usage {
 
 type chatRequest struct {
 	Model         string         `json:"model"`
-	Messages      []chatMessage  `json:"messages"`
 	Tools         []chatTool     `json:"tools,omitempty"`
+	Messages      []chatMessage  `json:"messages"`
 	Stream        bool           `json:"stream"`
 	StreamOptions *streamOptions `json:"stream_options,omitempty"`
 	Temperature   float64        `json:"temperature,omitempty"`

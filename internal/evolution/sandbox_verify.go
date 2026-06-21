@@ -3,16 +3,16 @@
 // Replaces the weak validatePattern (episodic memory keyword check) with
 // layered skill validation:
 //
-//   Layer 0 — Structural validation (zero-LLM, always available):
-//     Checks skill body completeness: frontmatter, required sections.
-//     Stricter than skill.ValidateStructure — requires evolution-specific
-//     sections ("## When to Use", "## Steps", "## Verification").
+//	Layer 0 — Structural validation (zero-LLM, always available):
+//	  Checks skill body completeness: frontmatter, required sections.
+//	  Stricter than skill.ValidateStructure — requires evolution-specific
+//	  sections ("## When to Use", "## Steps", "## Verification").
 //
-//   Layer 1 — Safety pattern scanning:
-//     Delegates to skill.ValidateSafety — the canonical implementation
-//     shared with Store.parse() so hand-written skills are also checked.
+//	Layer 1 — Safety pattern scanning:
+//	  Delegates to skill.ValidateSafety — the canonical implementation
+//	  shared with Store.parse() so hand-written skills are also checked.
 //
-//   Layer 2 — LLM safety review (Learn tool path, provider available).
+//	Layer 2 — LLM safety review (Learn tool path, provider available).
 //
 // This file is referenced by learn_interface.go as the P1 smart closure
 // component of the self-evolution engine.

@@ -15,14 +15,14 @@ func firstLine(s string) string {
 	return s
 }
 
-// truncateToolOutput head+tails s when it exceeds maxToolOutputBytes. Slices are
+// truncateToolOutput head+tails s when it exceeds maxBytes. Slices are
 // aligned to rune boundaries by nudging INWARD (never outward), so the result
 // is never longer than the original and always valid UTF-8.
-func truncateToolOutput(s string) (string, string) {
-	if len(s) <= maxToolOutputBytes {
+func truncateToolOutput(s string, maxBytes int) (string, string) {
+	if len(s) <= maxBytes {
 		return s, ""
 	}
-	keep := maxToolOutputBytes / 2
+	keep := maxBytes / 2
 	// Head: take up to 'keep' bytes, then back up to the last rune start.
 	headEnd := keep
 	for headEnd > 0 && !utf8.RuneStart(s[headEnd]) {
@@ -49,7 +49,7 @@ func truncateToolOutput(s string) (string, string) {
 	omitted := len(s) - len(head) - len(tail)
 	if omitted < overheadMax {
 		// Not enough to justify truncation — return full output with a warning marker
-		return s + fmt.Sprintf("\n\n…[tool output exceeds %d bytes]…", maxToolOutputBytes),
+		return s + fmt.Sprintf("\n\n…[tool output exceeds %d bytes]…", maxBytes),
 			fmt.Sprintf("tool output truncated: %d of %d bytes elided", omitted, len(s))
 	}
 	notice := fmt.Sprintf("tool output truncated: %d of %d bytes elided", omitted, len(s))
