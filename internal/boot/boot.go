@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/NB-Agent/ok/internal/agent"
@@ -428,6 +429,7 @@ func Build(ctx context.Context, opts Options) (*control.Controller, error) {
 		fed.Start()
 	}
 	if mem.Store.Dir != "" {
+		var episodicCounter atomic.Int32
 		executor.SetOnTurnComplete(func(ctx context.Context, input, answer string) {
 			// Self-evolution: auto-extract experiences and detect patterns
 			evol.OnTurnComplete(ctx, input, answer)
@@ -443,16 +445,22 @@ func Build(ctx context.Context, opts Options) (*control.Controller, error) {
 				body = body[:200] + "..."
 			}
 
-			_, err := mem.Store.Save(memory.Memory{
-				Name:        "episodic-" + time.Now().Format("20060102-150405"),
-				Description: desc,
-				Type:        memory.TypeProject,
-				Body: fmt.Sprintf("## Input\n%s\n\n## Outcome\n%s\n\n---\n*Auto-saved episodic memory*",
-					desc, body),
-			})
-			if err != nil {
-				sink.Emit(&event.Event{Kind: event.Notice, Level: event.LevelWarn,
-					Text: "failed to save episodic memory: " + err.Error()})
+			// Batch episodic saves: only every 5 turns, so the memory
+			// index churns less between sessions and the cache-stable system-prompt
+			// prefix stays byte-identical for longer.
+			sn := episodicCounter.Add(1)
+			if sn%5 == 1 {
+				_, err := mem.Store.Save(memory.Memory{
+					Name:        "episodic-" + time.Now().Format("20060102-150405"),
+					Description: desc,
+					Type:        memory.TypeProject,
+					Body: fmt.Sprintf("## Input\n%s\n\n## Outcome\n%s\n\n---\n*Auto-saved episodic memory*",
+						desc, body),
+				})
+				if err != nil {
+					sink.Emit(&event.Event{Kind: event.Notice, Level: event.LevelWarn,
+						Text: "failed to save episodic memory: " + err.Error()})
+				}
 			}
 
 			// Significant turns also get saved to shared memory for cross-project learning.
@@ -840,16 +848,14 @@ func assembleSystemPrompt(cfg *config.Config, mem *memory.Set, cwd string) (prom
 	prompt = raw + "\n\n" + config.LanguagePolicy
 	prompt = memory.Compose(prompt, mem)
 	sharedStore := memory.SharedStoreFor(config.MemoryUserDir())
-	sharedStore.Compact()
 	if sharedIdx := sharedStore.Index(); sharedIdx != "" {
 		// Truncate to the first 30 entries so the shared section never bloats
 		// the cache-stable system-prompt prefix. Full index is available via
 		// recall/rag.
 		lines := strings.Split(sharedIdx, "\n")
 		if len(lines) > 30 {
-			extra := len(lines) - 30
 			sharedIdx = strings.Join(lines[:30], "\n") +
-				fmt.Sprintf("\n… and %d more (use `recall` (core) or activate knowledge group for `rag`/`semantic-search` to search all memories)\n", extra)
+				"\n\n… and more (use `recall` (core) or activate knowledge group for `rag`/`semantic-search` to search all memories)\n"
 		}
 		prompt = prompt + "\n\n# Shared Knowledge\n\n" + sharedIdx
 	}

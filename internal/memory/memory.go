@@ -48,7 +48,6 @@ func Load(opts Options) *Set {
 	if store.Dir == "" {
 		store = StoreFor(opts.UserDir, cwd)
 	}
-	store.Compact()
 	return &Set{
 		Docs:    discoverDocs(cwd, opts.UserDir),
 		Store:   store,
