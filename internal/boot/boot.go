@@ -840,6 +840,15 @@ func assembleSystemPrompt(cfg *config.Config, mem *memory.Set, cwd string) (prom
 	prompt = raw + "\n\n" + config.LanguagePolicy
 	prompt = memory.Compose(prompt, mem)
 	if sharedIdx := memory.SharedStoreFor(config.MemoryUserDir()).Index(); sharedIdx != "" {
+		// Truncate to the first 30 entries so the shared section never bloats
+		// the cache-stable system-prompt prefix. Full index is available via
+		// recall/rag.
+		lines := strings.Split(sharedIdx, "\n")
+		if len(lines) > 30 {
+			extra := len(lines) - 30
+			sharedIdx = strings.Join(lines[:30], "\n") +
+				fmt.Sprintf("\n… and %d more (use `recall` (core) or activate knowledge group for `rag`/`semantic-search` to search all memories)\n", extra)
+		}
 		prompt = prompt + "\n\n# Shared Knowledge\n\n" + sharedIdx
 	}
 	store = skill.New(skill.Options{ProjectRoot: cwd, CustomPaths: cfg.SkillCustomPaths()})

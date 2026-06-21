@@ -26,8 +26,9 @@ const MaxMemoryEntries = 500
 // saved, and reads individual facts on demand with read_file. The whole thing is
 // plain files the user can edit by hand.
 type Store struct {
-	Dir string // ...ok/projects/<slug>/memory
-	mu  *sync.Mutex
+	Dir        string // ...ok/projects/<slug>/memory
+	mu         *sync.Mutex
+	maxEntries int // prune cap; 0 means use default (MaxMemoryEntries)
 }
 
 // Type classifies a memory, mirroring the auto-memory taxonomy.
@@ -70,7 +71,7 @@ func StoreFor(userDir, cwd string) Store {
 	if userDir == "" {
 		return Store{}
 	}
-	return Store{Dir: filepath.Join(userDir, "projects", slugify(absOf(cwd)), "memory"), mu: &sync.Mutex{}}
+	return Store{Dir: filepath.Join(userDir, "projects", slugify(absOf(cwd)), "memory"), mu: &sync.Mutex{}, maxEntries: MaxMemoryEntries}
 }
 
 // indexFile is the human-readable index of saved memories.
@@ -136,7 +137,11 @@ func (s Store) Save(m Memory) (string, error) {
 		return path, err
 	}
 	// Prune oldest entries when over the cap so the index never grows unbounded.
-	s.prune(MaxMemoryEntries)
+	cap := s.maxEntries
+	if cap <= 0 {
+		cap = MaxMemoryEntries
+	}
+	s.prune(cap)
 	return path, nil
 }
 
