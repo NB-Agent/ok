@@ -115,16 +115,17 @@ async function downloadFile(url: string, destPath: string): Promise<void> {
         const file = fs.createWriteStream(destPath);
         const doGet = (u: string) => {
             https.get(u, (res) => {
-                if (res.statusCode !== null && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+                const sc = res.statusCode ?? 0;
+                if (sc >= 300 && sc < 400 && res.headers.location) {
                     file.close();
                     fs.unlinkSync(destPath);
                     doGet(res.headers.location);
                     return;
                 }
-                if (res.statusCode !== 200) {
+                if (sc !== 200) {
                     file.close();
                     fs.unlinkSync(destPath);
-                    reject(new Error(`Download failed: HTTP ${res.statusCode}`));
+                    reject(new Error(`Download failed: HTTP ${sc}`));
                     return;
                 }
                 res.pipe(file);
