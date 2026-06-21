@@ -1,40 +1,21 @@
----
-name: Pull Request
-about: Submit a change to OK
-title: ""
-labels: ""
-assignees: ""
----
-
 ## Summary
 
-<!-- Brief description of the change -->
+<!-- What does this PR do? One paragraph is enough. -->
 
 ## Motivation
 
-<!-- Why is this change needed? Reference issues if applicable -->
-
-Closes #
+<!-- Why is this change needed? Link related issues: Closes #123 -->
 
 ## Changes
 
-<!-- List key changes -->
+<!-- List the concrete changes, one per line -->
 
 -
--
-
-## Testing
-
-<!-- How was this tested? -->
-
-- [ ] `make test` passes
-- [ ] `make lint` passes (or `golangci-lint run ./...`)
-- [ ] Added/updated tests for new behavior
-- [ ] Manual testing performed (describe below)
 
 ## Checklist
 
-- [ ] Code follows project conventions (GoDoc on exports, `gofmt`, `%w` error wrapping)
-- [ ] No new dependencies without discussion
-- [ ] Breaking changes are documented in the PR description
-- [ ] Security-sensitive changes have been reviewed for injection/sandbox/SSRF impact
+- [ ] `go build ./...` passes
+- [ ] `go test ./...` passes
+- [ ] `go vet ./...` clean
+- [ ] CHANGELOG.md updated (if user-facing)
+- [ ] Documentation updated (if API/config changes)
