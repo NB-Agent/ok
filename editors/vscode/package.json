@@ -4,6 +4,7 @@
   "description": "World's-first autonomous dev agent — OS-level sandbox, ProofChain audit, 30+ languages, DAG multi-agent",
   "version": "0.2.0",
   "publisher": "ok-ai",
+  "repository": { "url": "https://github.com/NB-Agent/ok" },
   "engines": { "vscode": "^1.85.0" },
   "categories": ["Programming Languages", "Chat", "Other"],
   "icon": "icon.png",
