@@ -4,7 +4,6 @@
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
-const { createGunzip } = require('zlib');
 
 const pkg = require('./package.json');
 const version = pkg.version;

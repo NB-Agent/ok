@@ -316,7 +316,7 @@ func (idx *Index) Save() error {
 	closed := false
 	defer func() {
 		if !closed {
-			f.Close()
+			_ = f.Close()
 		}
 		// Remove temp file if rename fails.
 		if err != nil {

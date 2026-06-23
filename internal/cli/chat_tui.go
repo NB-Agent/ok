@@ -400,7 +400,7 @@ func (m chatTUI) View() tea.View {
 
 	for _, entry := range m.lines {
 		for _, line := range strings.Split(entry, "\n") {
-			styled := line
+			var styled string
 			switch {
 			case strings.HasPrefix(line, "› "):
 				styled = userCard.Render(line)

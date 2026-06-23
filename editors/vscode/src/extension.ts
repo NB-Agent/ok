@@ -5,7 +5,6 @@ import * as http from 'http';
 import * as https from 'https';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
 
 // GitHub repo for binary downloads
 const GITHUB_REPO = 'ok-ai/ok';
@@ -645,7 +644,7 @@ export async function activate(context: vscode.ExtensionContext) {
         }),
 
         vscode.commands.registerCommand('ok.fixCodeLens', async (uri: vscode.Uri, _range: vscode.Range) => {
-            const editor = await vscode.window.showTextDocument(uri);
+            await vscode.window.showTextDocument(uri);
             const diagnostics = vscode.languages.getDiagnostics(uri);
             if (diagnostics.length === 0) {
                 vscode.window.showInformationMessage('No problems found — code looks good!');

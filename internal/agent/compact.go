@@ -630,7 +630,7 @@ func archiveMessages(dir string, msgs []provider.Message) (string, error) {
 	needsCleanup := true
 	defer func() {
 		if needsCleanup {
-			f.Close()
+			_ = f.Close()
 			os.Remove(path)
 		}
 	}()

@@ -225,7 +225,7 @@ func generateSkillBody(name string, patterns []string) string {
 			}
 		} else {
 			parts := strings.SplitN(p, ":", 3)
-			if len(parts) >= 2 {
+			if len(parts) >= 3 {
 				toolList = append(toolList, fmt.Sprintf("- %s (used %s times)", parts[1], parts[2]))
 			}
 		}
