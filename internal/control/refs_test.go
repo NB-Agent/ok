@@ -1,0 +1,166 @@
+package control
+
+import (
+	"os"
+	"path/filepath"
+	"reflect"
+	"strings"
+	"testing"
+)
+
+func TestParseRefTokens(t *testing.T) {
+	cases := []struct {
+		line string
+		want []string
+	}{
+		{"see @docs:doc://x and @src/main.go", []string{"docs:doc://x", "src/main.go"}},
+		{"trailing @file.go.", []string{"file.go"}},
+		{"dedup @a @a", []string{"a"}},
+		{"no refs here", nil},
+		{"email a@b.com keeps token", []string{"b.com"}},
+	}
+	for _, c := range cases {
+		got := parseRefTokens(c.line)
+		if len(got) == 0 && len(c.want) == 0 {
+			continue
+		}
+		if !reflect.DeepEqual(got, c.want) {
+			t.Errorf("parseRefTokens(%q) = %v, want %v", c.line, got, c.want)
+		}
+	}
+}
+
+func TestClassifyRef(t *testing.T) {
+	known := map[string]bool{"docs": true}
+	files := map[string]bool{"src/main.go": true, "README.md": true}
+	exists := func(p string) bool { return files[p] }
+
+	cases := []struct {
+		token   string
+		wantOK  bool
+		wantKnd refKind
+	}{
+		{"docs:doc://style", true, refResource}, // known server + uri
+		{"src/main.go", true, refFile},          // existing file
+		{"README.md", true, refFile},            // existing file
+		{"ghost:issue://1", false, 0},           // unknown server, no such file
+		{"missing.go", false, 0},                // nonexistent path → not a ref
+		{"docs:", false, 0},                     // empty uri → not a resource, no file
+	}
+	for _, c := range cases {
+		r, ok := classifyRef(c.token, known, exists)
+		if ok != c.wantOK {
+			t.Errorf("classifyRef(%q) ok = %v, want %v", c.token, ok, c.wantOK)
+			continue
+		}
+		if ok && r.kind != c.wantKnd {
+			t.Errorf("classifyRef(%q) kind = %v, want %v", c.token, r.kind, c.wantKnd)
+		}
+	}
+}
+
+func TestReadFileRef(t *testing.T) {
+	dir := t.TempDir()
+
+	textPath := filepath.Join(dir, "hello.txt")
+	if err := os.WriteFile(textPath, []byte("line one\nline two\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	binPath := filepath.Join(dir, "blob.bin")
+	if err := os.WriteFile(binPath, []byte{'a', 0x00, 'b'}, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	bigPath := filepath.Join(dir, "big.txt")
+	if err := os.WriteFile(bigPath, []byte(strings.Repeat("a", maxFileRefBytes+100)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Text file: content verbatim, not a directory.
+	if got, isDir, err := readFileRef(textPath); err != nil || isDir || got != "line one\nline two\n" {
+		t.Errorf("text file = (%q, %v, %v)", got, isDir, err)
+	}
+
+	// Binary file: noted, not dumped.
+	if got, _, err := readFileRef(binPath); err != nil || !strings.Contains(got, "binary file") {
+		t.Errorf("binary file = (%q, %v), want a binary note", got, err)
+	}
+
+	// Large file: truncated with a marker.
+	if got, _, err := readFileRef(bigPath); err != nil || !strings.Contains(got, "truncated") {
+		t.Errorf("big file should be truncated, got len=%d err=%v", len(got), err)
+	}
+
+	// Directory: one-level listing including a trailing slash for subdirs.
+	if err := os.Mkdir(filepath.Join(dir, "sub"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	got, isDir, err := readFileRef(dir)
+	if err != nil || !isDir {
+		t.Fatalf("dir = (isDir=%v, err=%v)", isDir, err)
+	}
+	if !strings.Contains(got, "hello.txt") || !strings.Contains(got, "sub/") {
+		t.Errorf("dir listing = %q, want hello.txt and sub/", got)
+	}
+
+	// Missing path: error.
+	if _, _, err := readFileRef(filepath.Join(dir, "nope")); err == nil {
+		t.Error("missing path should error")
+	}
+}
+
+func TestAppendRefBlock(t *testing.T) {
+	tests := []struct {
+		name string
+		pre  string // pre-seed builder content
+		tag  string
+		attr string
+		body string
+		want string
+	}{
+		{
+			name: "first block",
+			pre:  "",
+			tag:  "file",
+			attr: `path="a.go"`,
+			body: "package main",
+			want: `<file path="a.go">
+package main
+</file>`,
+		},
+		{
+			name: "second block gets separator",
+			pre:  "<file path=\"a.go\">\npackage main\n</file>",
+			tag:  "file",
+			attr: `path="b.go"`,
+			body: "package b",
+			want: `<file path="a.go">
+package main
+</file>
+
+<file path="b.go">
+package b
+</file>`,
+		},
+		{
+			name: "empty body",
+			pre:  "",
+			tag:  "resource",
+			attr: `uri="doc://style"`,
+			body: "",
+			want: `<resource uri="doc://style">
+
+</resource>`,
+		},
+	}
+
+	for _, tt := range tests {
+		var b strings.Builder
+		if tt.pre != "" {
+			b.WriteString(tt.pre)
+		}
+		appendRefBlock(&b, tt.tag, tt.attr, tt.body)
+		if b.String() != tt.want {
+			t.Errorf("%s:\ngot:\n%q\nwant:\n%q", tt.name, b.String(), tt.want)
+		}
+	}
+}

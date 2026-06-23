@@ -1,0 +1,239 @@
+# OK configuration.
+# Resolution order: flag > ./ok.toml > ~/.config/ok/config.toml > built-in defaults.
+# Secrets come from the environment via api_key_env; never put keys here.
+
+default_model = "deepseek"   # a provider name (→ its default model) or "provider/model"
+# language      = "zh"   # ui language; empty = auto-detect from $LANG / $OK_LANG
+
+[agent]
+system_prompt = """
+You are OK, a coding agent. Your working method:
+
+0. Perceive the gap — get facts, define target, identify what to decompose.
+1. Decomposition — recursively break into yes/no sub-problems to atomic actions.
+2. Verification — post-order: children first, then parent (logical AND). On no: backtrack.
+3. Resolution — root = yes → done.
+
+Task tree protocol: spawn via task(), manage slots, parallel where independent.
+Constraints: read/write files, run shell commands, ask for user choices, track with todo_write.
+"""
+# system_prompt_file = "prompts/system.md"   # overrides system_prompt when set
+max_steps   = 25
+temperature = 0.0
+# planner_model = "mimo-pro"   # optional: enable two-model collaboration
+# max_concurrent_tasks = 5     # sub-agent slots; matches typical API concurrency limits. 0 = unlimited
+
+# A provider is a vendor endpoint (one base_url + key) that offers one or more
+# models. Use `models = [...]` to expose several under a single entry — switching
+# models reuses the same connection; no need to re-declare base_url/api_key.
+[[providers]]
+name        = "deepseek"
+kind        = "openai"
+base_url    = "https://api.deepseek.com"
+models      = ["deepseek-v4-flash", "deepseek-v4-pro"]
+default     = "deepseek-v4-flash"   # optional; defaults to the first of `models`
+api_key_env = "DEEPSEEK_API_KEY"
+context_window = 1000000
+price       = { cache_hit = 0.02, input = 1, output = 2, currency = "¥" }   # per 1M tokens
+
+# A single-model provider still works (use `model = "..."`) — pick this form when a
+# model needs its own base_url / context_window / price (e.g. the two MiMo SKUs
+# below have different context windows).
+
+[[providers]]
+name           = "mimo-pro"
+kind           = "openai"
+base_url       = "https://api.xiaomimimo.com/v1"
+model          = "mimo-v2.5-pro"   # thinking-mode on by default; reasoning_content rendered dim above the answer
+api_key_env    = "MIMO_API_KEY"
+context_window = 1000000
+
+[[providers]]
+name           = "mimo-flash"
+kind           = "openai"
+base_url       = "https://api.xiaomimimo.com/v1"
+model          = "mimo-v2-flash"   # thinking-mode off by default; cheaper / faster
+api_key_env    = "MIMO_API_KEY"
+context_window = 65536
+
+# Anthropic (Claude) provider — uses the native Messages API, not OpenAI-compatible.
+[[providers]]
+name           = "claude"
+kind           = "anthropic"
+base_url       = "https://api.anthropic.com"       # or your proxy endpoint
+models         = ["claude-sonnet-4-20250514", "claude-haiku-3-5-20241022"]
+default        = "claude-sonnet-4-20250514"
+api_key_env    = "ANTHROPIC_API_KEY"
+context_window = 200000
+
+# ============================================================
+# Below are WELL-KNOWN PROVIDERS — uncomment and fill in your
+# API key env var if you want to use them. OK also auto-detects
+# most of these from environment variables on startup (just set
+# the *_API_KEY env var and it Just Works™ with zero config).
+# ============================================================
+
+# --- Google Gemini (OpenAI-compatible) ---
+# [[providers]]
+# name           = "gemini"
+# kind           = "openai"
+# base_url       = "https://generativelanguage.googleapis.com/v1beta/openai"
+# models         = ["gemini-2.5-flash", "gemini-2.5-pro"]
+# default        = "gemini-2.5-flash"
+# api_key_env    = "GEMINI_API_KEY"
+# context_window = 1048576
+
+# --- OpenAI (direct) ---
+# [[providers]]
+# name           = "openai"
+# kind           = "openai"
+# base_url       = "https://api.openai.com/v1"
+# model          = "gpt-4o"
+# api_key_env    = "OPENAI_API_KEY"
+# context_window = 128000
+
+# --- Groq (fast inference, free tier available) ---
+# [[providers]]
+# name           = "groq"
+# kind           = "openai"
+# base_url       = "https://api.groq.com/openai/v1"
+# model          = "llama-3.3-70b-versatile"
+# api_key_env    = "GROQ_API_KEY"
+# context_window = 131072
+
+# --- OpenRouter (one key → 200+ models) ---
+# [[providers]]
+# name           = "openrouter"
+# kind           = "openai"
+# base_url       = "https://openrouter.ai/api/v1"
+# model          = "openrouter/auto"
+# api_key_env    = "OPENROUTER_API_KEY"
+# context_window = 200000
+
+# --- Together AI ---
+# [[providers]]
+# name           = "together"
+# kind           = "openai"
+# base_url       = "https://api.together.xyz/v1"
+# model          = "meta-llama/Llama-3.3-70B-Instruct-Turbo"
+# api_key_env    = "TOGETHER_API_KEY"
+# context_window = 131072
+
+# --- Perplexity ---
+# [[providers]]
+# name           = "perplexity"
+# kind           = "openai"
+# base_url       = "https://api.perplexity.ai"
+# model          = "sonar-pro"
+# api_key_env    = "PERPLEXITY_API_KEY"
+# context_window = 200000
+
+# --- xAI (Grok) ---
+# [[providers]]
+# name           = "grok"
+# kind           = "openai"
+# base_url       = "https://api.x.ai/v1"
+# model          = "grok-3"
+# api_key_env    = "XAI_API_KEY"
+# context_window = 131072
+
+# --- Mistral AI ---
+# [[providers]]
+# name           = "mistral"
+# kind           = "openai"
+# base_url       = "https://api.mistral.ai/v1"
+# model          = "mistral-large-2411"
+# api_key_env    = "MISTRAL_API_KEY"
+# context_window = 128000
+
+# --- Cohere ---
+# [[providers]]
+# name           = "cohere"
+# kind           = "openai"
+# base_url       = "https://api.cohere.com/v2"
+# model          = "command-r-plus"
+# api_key_env    = "COHERE_API_KEY"
+# context_window = 128000
+
+# --- Fireworks AI ---
+# [[providers]]
+# name           = "fireworks"
+# kind           = "openai"
+# base_url       = "https://api.fireworks.ai/inference/v1"
+# model          = "accounts/fireworks/models/llama-v3p3-70b-instruct"
+# api_key_env    = "FIREWORKS_API_KEY"
+# context_window = 128000
+
+# --- Ollama (local, no API key needed) ---
+# [[providers]]
+# name           = "ollama"
+# kind           = "openai"
+# base_url       = "http://localhost:11434/v1"
+# model          = "llama3.2"       # or any model you've pulled
+# api_key_env    = "OLLAMA_API_KEY" # can be empty for local
+# context_window = 32768
+
+# --- GitHub Models (free, needs GitHub token) ---
+# [[providers]]
+# name           = "github"
+# kind           = "openai"
+# base_url       = "https://models.inference.ai.azure.com"
+# model          = "gpt-4o"
+# api_key_env    = "GITHUB_TOKEN"
+# context_window = 128000
+
+[tools]
+enabled = []   # empty = all built-in tools
+
+# Mode controls the interaction style:
+#   plan   — read-only; writers blocked, propose a plan for approval
+#   normal — prompts before writer calls (y once / a this session / n no)
+#   yolo   — writers allowed without prompting (deny rules still apply)
+# deny are "ToolName" or "ToolName(glob)" patterns blocked in every mode.
+[mode]
+default = "normal"
+deny    = ["bash(rm -rf*)", "bash(git push*)"]
+
+# Sandbox confines bash to an OS-level jail (macOS Seatbelt, Linux Landlock,
+# Windows Job Objects). Bash can only write to the workspace + temp/cache dirs.
+# Network allows egress (needed for builds/downloads). bash = "off" disables it.
+[sandbox]
+bash    = "enforce"
+network = true    # egress allowed so builds/downloads work
+# workspace_root = ""          # file-writers confined here; empty = current dir
+# allow_write    = ["/tmp"]    # extra dirs write_file/edit_file/multi_edit may touch
+
+# CodeGraph code intelligence (symbol/call-graph search via tree-sitter + SQLite),
+# shipped as a built-in MCP server. On by default: when the bundle resolves (beside
+# the ok binary, then PATH), the agent gains codegraph_* search / context /
+# explore / trace / node tools. .codegraph/ is initialised on first use (fast); the
+# actual indexing runs in CodeGraph's daemon in the background, so startup never
+# blocks even on a large repo. A missing bundle is a silent no-op. Disable to fall
+# back to grep/glob, or point `path` at a specific launcher.
+# [codegraph]
+# enabled = true
+# path    = ""   # e.g. "~/.local/bin/codegraph"; empty = bundle, then PATH
+
+# Skills are invokable playbooks (SKILL.md / <name>.md with frontmatter), found
+# under .ok/skills, .agents/skills, .agent/skills, .claude/skills (project)
+# and the same dirs under ~ (global). Built-ins (explore/research/review/security-review/test)
+# ship out of the box. The model invokes them via run_skill / explore / …; you
+# invoke them via /<name>. Manage with /skill (list, show, new, paths).
+# [skills]
+# paths = ["~/my-skills", "../shared/skills"]   # extra "custom"-scope skill roots
+
+# Hooks run shell commands around the loop (PreToolUse / PostToolUse /
+# UserPromptSubmit / Stop). They are NOT configured here — put them in
+# settings.json: ~/.ok/settings.json (global, always on) and
+# <project>/.ok/settings.json (project, runs only after `/hooks trust`).
+# Exit 0 = pass, exit 2 = block (PreToolUse / UserPromptSubmit only). Example
+# ~/.ok/settings.json:
+#   { "hooks": {
+#       "PreToolUse":  [ { "match": "bash", "command": "my-guard.sh" } ],
+#       "PostToolUse": [ { "match": ".*file", "command": "gofmt -w ." } ],
+#       "Stop":        [ { "command": "notify-send 'turn done'" } ] } }
+
+# External stdio plugins (MCP-compatible); each is a standalone executable.
+# [[plugins]]
+# name    = "example"
+# command = "ok-plugin-example"

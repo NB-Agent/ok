@@ -1,0 +1,1 @@
+{"name":"@ok/deploy","version":"1.0.0","description":"SSH-based deployment: build, upload, restart, health-check","author":"OK Team","license":"MIT","tags":["deploy","ssh","devops"],"min_ok_version":"4.0.0","tools":["deploy"],"entrypoint":"ok-deploy-mcp","transport":"stdio"}

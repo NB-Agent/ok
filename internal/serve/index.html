@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<meta name="theme-color" content="#0a0a0a" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<link rel="manifest" href="/manifest.json" />
+<title>ok</title>
+<style>
+  :root { color-scheme: dark; --bg: #0a0a0a; --fg: #e0e0e0; --accent: #2563eb; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+         background: var(--bg); color: var(--fg); height: 100dvh;
+         display: flex; flex-direction: column; overflow: hidden; }
+  #log { flex: 1; overflow-y: auto; white-space: pre-wrap; word-break: break-word;
+         padding: max(env(safe-area-inset-top), .75rem) .75rem 0; }
+  .reason { opacity: .6; font-size: 13px; }
+  .tool { color: #60a5fa; }
+  .notice { opacity: .7; font-size: 13px; }
+  .err { color: #ef4444; }
+  .user { font-weight: 600; margin-top: .75rem; color: #f0f0f0; }
+  .usage { opacity: .55; font-size: 12px; }
+  #bar { display: flex; gap: .5rem; padding: .5rem;
+         padding-bottom: max(env(safe-area-inset-bottom), .5rem);
+         border-top: 1px solid #ffffff20; background: #141414; }
+  #in { flex: 1; padding: .6rem .8rem; font: inherit; font-size: 16px;
+        border: 1px solid #ffffff20; border-radius: 8px; background: #1a1a1a;
+        color: var(--fg); outline: none; }
+  #in:focus { border-color: var(--accent); }
+  #bar button { padding: .6rem 1rem; border: none; border-radius: 8px;
+                font: inherit; font-size: 14px; cursor: pointer; }
+  #btn-send { background: var(--accent); color: #fff; }
+  #btn-cancel { background: #333; color: var(--fg); }
+  #approval { display: none; padding: .75rem 1rem; background: #fde68a22;
+              border-bottom: 1px solid #fde68a44; }
+  #approval button { margin-left: .5rem; padding: .4rem .8rem; border: none;
+                     border-radius: 6px; cursor: pointer; }
+  .approve-btn { background: #22c55e; color: #fff; }
+  .reject-btn { background: #ef4444; color: #fff; }
+  .msg-time { float: right; font-size: 11px; opacity: .4; margin-top: 2px; }
+  table.usage { border-collapse: collapse; font-size: 12px; }
+  table.usage td { padding: 1px 6px; }
+
+  @media (max-width: 480px) {
+    #bar button { padding: .6rem .7rem; font-size: 13px; }
+    #in { font-size: 16px; } /* prevent iOS zoom */
+    #log { font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+<div id="approval"></div>
+<div id="log"></div>
+<div id="bar">
+  <input id="in" placeholder="Message or /command" autofocus />
+  <button id="btn-send" onclick="send()">Send</button>
+  <button id="btn-cancel" onclick="post('/cancel')">Cancel</button>
+</div>
+<script>
+const log = document.getElementById('log');
+const input = document.getElementById('in');
+const approval = document.getElementById('approval');
+let asst = null;
+
+function line(cls, text) {
+  const el = document.createElement('div');
+  if (cls) el.className = cls;
+  el.textContent = text;
+  log.appendChild(el);
+  log.scrollTop = log.scrollHeight;
+  return el;
+}
+function post(path, body) {
+  return fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined });
+}
+function send() {
+  const v = input.value.trim();
+  if (!v) return;
+  line('user', 'you\n' + v);
+  input.value = '';
+  asst = null;
+  post('/send', { text: v });
+}
+function approve(id, allow) {
+  post('/approve', { id, allow });
+  approval.style.display = 'none';
+}
+
+input.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+});
+
+const evt = new EventSource('/events');
+evt.onmessage = e => {
+  try {
+    const ev = JSON.parse(e.data);
+    switch (ev.kind) {
+      case 'text':
+        if (!asst) asst = line('asst', '');
+        asst.textContent += ev.text;
+        break;
+      case 'reasoning':
+        if (!asst) asst = line('reason');
+        asst.textContent += ev.text;
+        break;
+      case 'message':
+        asst = null;
+        break;
+      case 'tool':
+        line('tool', (ev.tool?.partial ? '▶ ' : '▸ ') + (ev.tool?.name || '?') + ' ' + (ev.tool?.args || ''));
+        break;
+      case 'tool_result':
+        line('tool', '✔ ' + (ev.tool?.name || '?'));
+        break;
+      case 'notice':
+        line('notice', ev.text);
+        break;
+      case 'usage': {
+        const u = ev.usage || {};
+        line('usage', 'tokens: ' + u.total_tokens + ' (↑' + u.completion_tokens + ' ↓' + u.prompt_tokens + ')');
+        break;
+      }
+      case 'done': {
+        asst = null;
+        break;
+      }
+      case 'approval': {
+        approval.innerHTML = ev.text || 'Approve plan?';
+        approval.innerHTML += '<button class="approve-btn" onclick="approve(' + ev.request_id + ',true)">Approve</button>';
+        approval.innerHTML += '<button class="reject-btn" onclick="approve(' + ev.request_id + ',false)">Reject</button>';
+        approval.style.display = 'block';
+        break;
+      }
+    }
+    log.scrollTop = log.scrollHeight;
+  } catch(_) {}
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,86 @@
+{
+  "name": "ok",
+  "displayName": "OK Agent",
+  "description": "World's-first autonomous dev agent — OS-level sandbox, ProofChain audit, 30+ languages, DAG multi-agent",
+  "version": "0.2.0",
+  "publisher": "ok-ai",
+  "repository": { "url": "https://github.com/NB-Agent/ok" },
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Programming Languages", "Chat", "Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "ok-sidebar",
+          "title": "OK Agent",
+          "icon": "$(hubot)"
+        }
+      ]
+    },
+    "views": {
+      "ok-sidebar": [
+        {
+          "type": "webview",
+          "id": "ok.sidebar",
+          "name": "Chat"
+        }
+      ]
+    },
+    "commands": [
+      { "command": "ok.chat", "title": "OK: Start Chat", "icon": "$(hubot)" },
+      { "command": "ok.explain", "title": "OK: Explain Selected Code" },
+      { "command": "ok.fix", "title": "OK: Fix Problems in File" },
+      { "command": "ok.review", "title": "OK: Review Changes" },
+      { "command": "ok.explainCodeLens", "title": "OK: Explain (CodeLens)" },
+      { "command": "ok.fixCodeLens", "title": "OK: Fix (CodeLens)" },
+      { "command": "ok.newSession", "title": "OK: New Session" },
+      { "command": "ok.showOutput", "title": "OK: Show Output" }
+    ],
+    "keybindings": [
+      { "key": "ctrl+shift+o", "command": "ok.chat", "when": "editorTextFocus" },
+      { "key": "ctrl+shift+e", "command": "ok.explain", "when": "editorHasSelection" }
+    ],
+    "menus": {
+      "editor/context": [
+        { "command": "ok.explain", "group": "ok@1" },
+        { "command": "ok.fix", "group": "ok@2" }
+      ],
+      "scm/title": [
+        { "command": "ok.review", "group": "ok" }
+      ]
+    },
+    "configuration": {
+      "title": "OK Agent",
+      "properties": {
+        "ok.binaryPath": {
+          "type": "string",
+          "default": "ok",
+          "description": "Path to the ok binary"
+        },
+        "ok.serverPort": {
+          "type": "number",
+          "default": 8787,
+          "description": "Port for the ok serve HTTP/SSE server"
+        },
+        "ok.autoStartServer": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically start ok serve when VS Code opens"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.0"
+  }
+}

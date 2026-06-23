@@ -1,0 +1,46 @@
+{
+  "name": "ok-agent",
+  "version": "1.0.1",
+  "description": "The AI agent that writes its own playbooks — self-evolving, cross-platform, one engine, infinite frontends.",
+  "homepage": "https://github.com/NB-Agent/ok",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NB-Agent/ok.git"
+  },
+  "license": "Apache-2.0",
+  "author": "NB-Agent",
+  "type": "module",
+  "bin": {
+    "ok": "./bin/ok"
+  },
+  "files": [
+    "bin/ok",
+    "install.js",
+    "package.json"
+  ],
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
+  "scripts": {
+    "postinstall": "node install.js"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "coding",
+    "cli",
+    "deepseek",
+    "llm",
+    "golang",
+    "automation"
+  ],
+  "engines": {
+    "node": ">=16"
+  }
+}

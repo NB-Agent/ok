@@ -1,0 +1,1 @@
+{"name":"@ok/desktop","version":"1.0.0","description":"Desktop automation: screenshots, processes, windows, mouse, keyboard, clipboard","author":"OK Team","license":"MIT","tags":["desktop","automation","windows"],"min_ok_version":"4.0.0","tools":["desktop"],"entrypoint":"ok-desktop-mcp","transport":"stdio"}

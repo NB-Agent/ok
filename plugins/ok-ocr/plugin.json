@@ -1,0 +1,1 @@
+{"name":"@ok/ocr","version":"1.0.0","description":"Optical character recognition: extract text from images via Tesseract or AI","author":"OK Team","license":"MIT","tags":["ocr","vision","tesseract"],"min_ok_version":"4.0.0","tools":["ocr"],"entrypoint":"ok-ocr-mcp","transport":"stdio","capabilities":{"network":true}}

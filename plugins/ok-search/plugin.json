@@ -1,0 +1,1 @@
+{"name":"ok-search","version":"1.0.0","description":"Code search plugin — regex search across codebase, file glob search, and Go symbol lookup. No external dependencies.","tools":["search-code","search-files","search-symbols"]}

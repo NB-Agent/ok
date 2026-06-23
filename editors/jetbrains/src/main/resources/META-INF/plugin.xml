@@ -1,0 +1,71 @@
+<idea-plugin>
+    <id>io.ok.agent</id>
+    <name>OK Agent</name>
+    <vendor>OK AI</vendor>
+    <version>1.0.0</version>
+    <description><![CDATA[
+        <h1>OK Agent</h1>
+        <p>AI coding agent for your IDE — explain code, fix problems, review changes, and chat with OK.</p>
+        <ul>
+            <li>Explain selected code with AI</li>
+            <li>Auto-fix problems and diagnostics</li>
+            <li>Review uncommitted changes</li>
+            <li>Full chat sidebar powered by OK</li>
+        </ul>
+    ]]></description>
+
+    <change-notes><![CDATA[
+        <h3>1.0.0</h3>
+        <ul>
+            <li>Initial release</li>
+            <li>Chat sidebar with WebView</li>
+            <li>Explain code action</li>
+            <li>Fix problems action</li>
+            <li>Review changes action</li>
+            <li>Settings panel for OK binary path</li>
+        </ul>
+    ]]></change-notes>
+
+    <idea-version since-build="233" until-build="243.*"/>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.lang</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <toolWindow id="OK Agent" anchor="right"
+                    icon="/icons/ok.svg"
+                    factoryClass="io.ok.agent.OkToolWindowFactory"/>
+        <applicationConfigurable
+                groupId="tools"
+                id="io.ok.agent.settings"
+                displayName="OK Agent"
+                instance="io.ok.agent.OkSettingsConfigurable"/>
+        <intentionAction>
+            <className>io.ok.agent.OkExplainIntention</className>
+            <category>OK Agent</category>
+        </intentionAction>
+    </extensions>
+
+    <actions>
+        <action id="io.ok.agent.ExplainAction"
+                class="io.ok.agent.ExplainAction"
+                text="Explain with OK"
+                description="Explain selected code using OK AI">
+            <add-to-group group-id="EditorPopupMenu" anchor="after" relative-to-action="Copy"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl shift E"/>
+        </action>
+        <action id="io.ok.agent.FixAction"
+                class="io.ok.agent.FixAction"
+                text="Fix with OK"
+                description="Auto-fix problems using OK AI">
+            <add-to-group group-id="EditorPopupMenu" anchor="after" relative-to-action="io.ok.agent.ExplainAction"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl shift F"/>
+        </action>
+        <action id="io.ok.agent.ReviewAction"
+                class="io.ok.agent.ReviewAction"
+                text="Review with OK"
+                description="Review uncommitted changes using OK AI">
+            <add-to-group group-id="EditorPopupMenu" anchor="after" relative-to-action="io.ok.agent.FixAction"/>
+        </action>
+    </actions>
+</idea-plugin>

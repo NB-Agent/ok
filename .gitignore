@@ -1,0 +1,70 @@
+# Wails build assets/output — mostly auto-generated (plists, manifests, compiled
+# binary); ignore them but keep the committed designed app icon.
+/build/*
+!/build/appicon.png
+
+# Go test binaries
+*.test
+
+# Windows Go test binary
+*.test.exe
+
+# Local config symlinks for `wails dev` (point at the repo-root ok.toml/.env
+# so the desktop app resolves the same config/keys the CLI does). Never commit.
+/ok.toml
+/.env
+
+# All .exe binaries — zero tolerance
+*.exe
+
+# Build output — binaries, too large for git
+/release/
+
+# One-time setup script — not part of the repo
+/setup_git.bat
+/setup.ps1
+# One-click push helper — local convenience scripts
+/push-github.ps1
+/push-github.bat
+# Wails dependency-change cache
+/frontend/package.json.md5
+# Node modules and frontend build output
+/frontend/node_modules/
+/frontend/dist/
+/build/bin/AGENTS.md
+/build/bin/*.py
+/build/bin/*.sh
+/build/bin/.env
+/build/bin/ok.toml
+/build/bin/go-proj/
+/build/bin/queue/
+/build/bin/roman/
+/build/bin/store/
+/build/bin/task-mgr/
+/build/bin/ticket/
+/build/bin/user/
+
+# macOS finder droppings
+.DS_Store
+
+# Editor backup files
+*~
+
+# Session episodic memory — local-only, not for sharing
+.ok/memory/episodic/
+
+# Auto-generated skills and evolution candidates — instance-specific
+.ok/skills/auto-*
+.ok/memory/candidates/
+
+# Temporary debug scripts and data — never commit
+*.py
+*.zip
+deps.txt
+lint_report.txt
+nontest_lines.txt
+test_lines.txt
+nums.txt
+
+# Reasonix reference codebase — not part of OK
+/DeepSeek-Reasonix-main-v2/

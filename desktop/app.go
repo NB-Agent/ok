@@ -1,0 +1,771 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"sort"
+	"strings"
+	"sync"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
+
+	"github.com/NB-Agent/ok/internal/agent"
+	"github.com/NB-Agent/ok/internal/boot"
+	"github.com/NB-Agent/ok/internal/config"
+	"github.com/NB-Agent/ok/internal/control"
+	"github.com/NB-Agent/ok/internal/event"
+	"github.com/NB-Agent/ok/internal/i18n"
+	"github.com/NB-Agent/ok/internal/memory"
+	"github.com/NB-Agent/ok/internal/provider"
+)
+
+// eventChannel is the Wails runtime event name the frontend subscribes to for the
+// agent's typed event stream. One channel carries every event kind; the payload's
+// `kind` field discriminates — the desktop analogue of the serve transport's SSE
+// `data:` frames.
+const eventChannel = "agent:event"
+
+// App is the Wails-bound application object: the desktop frontend's command
+// surface. Its exported methods (Submit/Cancel/Approve/…) are generated into JS
+// bindings and call straight through to one transport-agnostic control.Controller
+// — the same controller the chat TUI and the HTTP/SSE server drive, assembled by
+// the shared internal/boot. Events flow the other way: the controller emits to an
+// eventSink that forwards each one to the webview via runtime.EventsEmit.
+type App struct {
+	ctx          context.Context
+	sink         *eventSink
+	ctrl         *control.Controller
+	windowEvents chan string // events: "minimized", "closed"
+
+	startupErr string
+	label      string
+	model      string // active provider name (for the bottom model switcher)
+
+	botsMu  sync.Mutex
+	botCmds map[string]*exec.Cmd // running bot binaries
+}
+
+// NewApp constructs the bound object. The controller is built later, in startup,
+// once the Wails context exists.
+func NewApp() *App {
+	return &App{
+		sink:         &eventSink{},
+		windowEvents: make(chan string, 8),
+		botCmds:      map[string]*exec.Cmd{},
+	}
+}
+
+// startup runs once the webview process is up, before the frontend can issue any
+// bound call. It captures the Wails context (needed for EventsEmit), points the
+// sink at it, then builds the controller with that sink — so the event bridge is
+// live before the first command lands. RequireKey is false so a missing API key
+// opens the window in a "set your key" state rather than failing to launch; a
+// build error is surfaced through Meta instead of crashing the window.
+func (a *App) startup(ctx context.Context) {
+	a.ctx = ctx
+	a.sink.ctx = ctx
+
+	// A GUI launch starts in "/" (read-only); move into a real, writable working
+	// folder (the remembered one, else home) before anything reads/writes config,
+	// .env, memory, or skills relative to cwd.
+	ensureWorkspace()
+
+	// Resolve the active model to its canonical "provider/model" ref up front so
+	// the switcher can mark it current.
+	if cfg, err := config.Load(); err == nil {
+		// Drive the Go-side catalog (i18n.M) from the configured language so the
+		// backend-provided slash UI — command descriptions, sub-command hints,
+		// listing notices — comes through localized, matching the frontend.
+		i18n.DetectLanguage(cfg.Language)
+		a.model = cfg.DefaultModel
+		if e, ok := cfg.ResolveModel(cfg.DefaultModel); ok {
+			a.model = e.Name + "/" + e.Model
+		}
+	}
+
+	ctrl, err := boot.Build(ctx, boot.Options{Model: a.model, RequireKey: false, Sink: a.sink})
+	if err != nil {
+		a.startupErr = err.Error()
+		return
+	}
+	a.ctrl = ctrl
+	a.label = ctrl.Label()
+
+	// Desktop is interactive: route "ask" gate decisions to the frontend as
+	// approval_request events, answered via Approve.
+	ctrl.EnableInteractiveApproval()
+
+	// Land auto-save in a fresh session file (same as a fresh chat/serve start).
+	if dir := ctrl.SessionDir(); dir != "" {
+		ctrl.SetSessionPath(agent.NewSessionPath(dir, ctrl.Label()))
+	}
+
+	// Start the system tray + global hotkey (Windows only).
+	startTray(ctx, a)
+}
+
+// shutdown snapshots the conversation and stops plugin subprocesses on close.
+func (a *App) shutdown(context.Context) {
+	if a.ctrl != nil {
+		if err := a.ctrl.Snapshot(); err != nil {
+			fmt.Fprintf(os.Stderr, "desktop: shutdown snapshot: %v\n", err)
+		}
+		a.ctrl.Close()
+	}
+}
+
+// --- bound command surface (frontend → controller) ---
+// Each method guards on a nil controller so a pre-startup or failed-build call is
+// a no-op, never a panic.
+
+// Submit runs raw user input as a turn; slash commands and @-references are
+// resolved by the controller. Output arrives asynchronously on eventChannel.
+func (a *App) Submit(input string) {
+	if a.ctrl != nil {
+		a.ctrl.Submit(input)
+	}
+}
+
+// Cancel aborts the in-flight turn.
+func (a *App) Cancel() {
+	if a.ctrl != nil {
+		a.ctrl.Cancel()
+	}
+}
+
+// Approve answers a pending approval_request by ID: allow runs the call, session
+// also remembers the grant for the rest of the session.
+func (a *App) Approve(id string, allow, session bool) {
+	if a.ctrl != nil {
+		a.ctrl.Approve(id, allow, session)
+	}
+}
+
+// SetPlanMode toggles read-only plan mode.
+func (a *App) SetPlanMode(on bool) {
+	if a.ctrl != nil {
+		a.ctrl.SetPlanMode(on)
+	}
+}
+
+// QuestionAnswer is the frontend's reply to one question in an ask_request.
+type QuestionAnswer struct {
+	QuestionID string   `json:"questionId"`
+	Selected   []string `json:"selected"`
+}
+
+// AnswerQuestion resolves a pending ask_request (the `ask` tool) by ID with the
+// user's selections per question.
+func (a *App) AnswerQuestion(id string, answers []QuestionAnswer) {
+	if a.ctrl == nil {
+		return
+	}
+	out := make([]event.AskAnswer, len(answers))
+	for i, an := range answers {
+		out[i] = event.AskAnswer{QuestionID: an.QuestionID, Selected: an.Selected}
+	}
+	a.ctrl.AnswerQuestion(id, out)
+}
+
+// Compact runs one compaction pass on demand.
+func (a *App) Compact() error {
+	if a.ctrl == nil {
+		return nil
+	}
+	return a.ctrl.Compact(a.ctx)
+}
+
+// NewSession snapshots the current conversation and rotates to a fresh one.
+func (a *App) NewSession() error {
+	if a.ctrl == nil {
+		return nil
+	}
+	return a.ctrl.NewSession()
+}
+
+// SessionMeta summarizes one saved session for the history panel.
+type SessionMeta struct {
+	Path    string `json:"path"`
+	Preview string `json:"preview"`         // first user message
+	Title   string `json:"title,omitempty"` // user-chosen name, when set (overrides preview)
+	Turns   int    `json:"turns"`
+	ModTime int64  `json:"modTime"` // unix milliseconds, for the frontend to group/format
+	Current bool   `json:"current"`
+}
+
+// ListSessions returns the saved sessions newest-first for the history panel,
+// marking the one the current conversation is writing to and attaching any
+// user-chosen titles.
+func (a *App) ListSessions() []SessionMeta {
+	dir := config.SessionDir()
+	infos, err := agent.ListSessions(dir)
+	if err != nil {
+		return []SessionMeta{}
+	}
+	titles := loadSessionTitles(dir)
+	cur := ""
+	if a.ctrl != nil {
+		cur = a.ctrl.SessionPath()
+	}
+	out := make([]SessionMeta, 0, len(infos))
+	for _, s := range infos {
+		out = append(out, SessionMeta{
+			Path:    s.Path,
+			Preview: s.Preview,
+			Title:   titles[filepath.Base(s.Path)],
+			Turns:   s.Turns,
+			ModTime: s.ModTime.UnixMilli(),
+			Current: s.Path == cur,
+		})
+	}
+	return out
+}
+
+// DeleteSession removes a saved session (and its title). It refuses the active
+// session — that's the conversation on screen, and auto-save would recreate the
+// file on the next turn; start a new session first to retire it.
+func (a *App) DeleteSession(path string) error {
+	if a.ctrl != nil && a.ctrl.SessionPath() == path {
+		return errActiveSession
+	}
+	return deleteSessionFile(config.SessionDir(), path)
+}
+
+// RenameSession sets a custom display name for a session (empty clears it back to
+// the preview). It only affects the history panel; the file on disk is unchanged.
+func (a *App) RenameSession(path, title string) error {
+	return setSessionTitle(config.SessionDir(), path, title)
+}
+
+// ResumeSession snapshots the current conversation, then loads the session at
+// path and continues it — auto-save keeps appending to that file. The model and
+// working folder are unchanged (same controller); only the transcript is swapped.
+// Returns the resumed messages for the frontend to render.
+func (a *App) ResumeSession(path string) ([]HistoryMessage, error) {
+	if a.ctrl == nil {
+		return []HistoryMessage{}, nil
+	}
+	loaded, err := agent.LoadSession(path)
+	if err != nil {
+		return nil, err
+	}
+	if err := a.ctrl.Snapshot(); err != nil {
+		fmt.Fprintf(os.Stderr, "desktop: switch session snapshot: %v\n", err)
+	}
+	a.ctrl.Resume(loaded, path)
+	return a.History(), nil
+}
+
+// PickWorkspace opens a folder chooser and, on a pick, switches the agent to that
+// project: it re-roots the process there, rebuilds the controller from that
+// folder's ok.toml + OK.md, and starts a fresh session — the desktop
+// analogue of opening a different project. The new controller is built before the
+// old one is torn down, so a folder whose config can't load leaves the current
+// session untouched. Returns the chosen path ("" if canceled).
+func (a *App) PickWorkspace() (string, error) {
+	if a.ctx == nil {
+		return "", nil
+	}
+	cur, _ := os.Getwd()
+	dir, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+		Title:            "Choose working folder",
+		DefaultDirectory: cur,
+	})
+	if err != nil || dir == "" {
+		return "", err // canceled or error → no change
+	}
+	if dir == cur {
+		return dir, nil
+	}
+	if err := os.Chdir(dir); err != nil {
+		return "", err
+	}
+	saveWorkspace(dir) // remember it so the next launch reopens here
+	// Resolve the new folder's default model from its own config.
+	model := ""
+	if cfg, cerr := config.Load(); cerr == nil {
+		model = cfg.DefaultModel
+		if e, ok := cfg.ResolveModel(cfg.DefaultModel); ok {
+			model = e.Name + "/" + e.Model
+		}
+	}
+	ctrl, err := boot.Build(a.ctx, boot.Options{Model: model, RequireKey: false, Sink: a.sink})
+	if err != nil {
+		if err := os.Chdir(cur); err != nil {
+			fmt.Fprintf(os.Stderr, "desktop: chdir rollback: %v\n", err)
+		}
+		return "", err
+	}
+	// Commit the switch: save and tear down the old session, then swap in the new
+	// project's controller with a fresh session file.
+	if a.ctrl != nil {
+		if err := a.ctrl.Snapshot(); err != nil {
+			fmt.Fprintf(os.Stderr, "desktop: pick workspace snapshot: %v\n", err)
+		}
+		a.ctrl.Close()
+	}
+	a.ctrl = ctrl
+	a.model = model
+	a.label = ctrl.Label()
+	a.startupErr = ""
+	ctrl.EnableInteractiveApproval()
+	if d := ctrl.SessionDir(); d != "" {
+		ctrl.SetSessionPath(agent.NewSessionPath(d, ctrl.Label()))
+	}
+	return dir, nil
+}
+
+// HistoryMessage is one prior turn, for the frontend to repopulate its transcript
+// after a reload.
+type HistoryMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+// History returns the session's message log.
+func (a *App) History() []HistoryMessage {
+	if a.ctrl == nil {
+		return nil
+	}
+	msgs := a.ctrl.History()
+	out := make([]HistoryMessage, 0, len(msgs))
+	for _, m := range msgs {
+		out = append(out, HistoryMessage{Role: string(m.Role), Content: m.Content})
+	}
+	return out
+}
+
+// ContextInfo is the prompt-vs-window gauge payload. Both zero means no data yet.
+type ContextInfo struct {
+	Used   int `json:"used"`
+	Window int `json:"window"`
+}
+
+// ContextUsage returns the latest context-window gauge numbers.
+func (a *App) ContextUsage() ContextInfo {
+	if a.ctrl == nil {
+		return ContextInfo{}
+	}
+	used, window := a.ctrl.ContextSnapshot()
+	return ContextInfo{Used: used, Window: window}
+}
+
+// BalanceInfo is the wallet-balance readout for the status bar. Available is true
+// only when a balance was fetched; Display is the formatted amount (e.g. "¥110.00")
+// and is "" when the active provider declares no balance_url — the frontend then
+// omits the readout. Err carries a fetch failure for an optional tooltip.
+type BalanceInfo struct {
+	Available bool   `json:"available"`
+	Display   string `json:"display"`
+	Err       string `json:"err,omitempty"`
+}
+
+// Balance queries the active provider's wallet balance (a network call). It
+// returns an empty (unavailable) readout when no provider balance_url is set, the
+// controller is down, or the fetch fails — so the status bar simply shows nothing
+// rather than an error.
+func (a *App) Balance() BalanceInfo {
+	if a.ctrl == nil {
+		return BalanceInfo{}
+	}
+	b, err := a.ctrl.Balance(a.ctx)
+	if err != nil {
+		return BalanceInfo{Err: err.Error()}
+	}
+	if b == nil {
+		return BalanceInfo{} // provider declares no balance endpoint
+	}
+	return BalanceInfo{Available: true, Display: b.Display()}
+}
+
+// JobView is one running background job (bash/task started with
+// run_in_background) for the status-bar indicator.
+type JobView struct {
+	ID        string `json:"id"`
+	Kind      string `json:"kind"`
+	Label     string `json:"label"`
+	Status    string `json:"status"`
+	StartedAt int64  `json:"startedAt"`
+}
+
+// Jobs returns the still-running background jobs for the status bar. It refreshes
+// on demand (mount, turn end, and on each notice the frontend receives).
+func (a *App) Jobs() []JobView {
+	out := []JobView{}
+	if a.ctrl == nil {
+		return out
+	}
+	for _, v := range a.ctrl.Jobs() {
+		out = append(out, JobView{ID: v.ID, Kind: v.Kind, Label: v.Label, Status: v.Status, StartedAt: v.StartedAt})
+	}
+	return out
+}
+
+// Meta describes the session for the frontend's header and status line.
+type Meta struct {
+	Label        string `json:"label"`
+	Ready        bool   `json:"ready"`
+	StartupErr   string `json:"startupErr,omitempty"`
+	EventChannel string `json:"eventChannel"`
+	Cwd          string `json:"cwd"`
+	Bypass       bool   `json:"bypass"` // YOLO mode on (auto-approve every tool call)
+}
+
+// Meta reports the model label, readiness, any startup error, the working
+// directory (for the status line), and the runtime event channel the frontend
+// subscribes to.
+func (a *App) Meta() Meta {
+	cwd, _ := os.Getwd()
+	return Meta{
+		Label:        a.label,
+		Ready:        a.ctrl != nil,
+		StartupErr:   a.startupErr,
+		EventChannel: eventChannel,
+		Cwd:          cwd,
+		Bypass:       a.ctrl != nil && a.ctrl.Bypass(),
+	}
+}
+
+// SetBypass toggles YOLO mode for the session: auto-approve every tool call
+// (writers and bash run without asking). Deny rules still apply. Runtime-only —
+// not written to config, so it resets on relaunch.
+func (a *App) SetBypass(on bool) {
+	if a.ctrl != nil {
+		a.ctrl.SetBypass(on)
+	}
+}
+
+// CommandInfo describes one available slash command for the composer's "/" menu.
+type CommandInfo struct {
+	Name        string `json:"name"` // without the leading slash
+	Description string `json:"description"`
+	Hint        string `json:"hint,omitempty"` // argument hint, if any
+	Kind        string `json:"kind"`           // "builtin" | "custom" | "mcp"
+}
+
+// Commands lists the slash commands available this session — built-in actions,
+// custom commands (.ok/commands), and MCP prompts — for the composer's "/"
+// autocomplete menu.
+func (a *App) Commands() []CommandInfo {
+	out := []CommandInfo{
+		{Name: "new", Description: i18n.M.CmdNew, Kind: "builtin"},
+		{Name: "compact", Description: i18n.M.CmdCompact, Kind: "builtin"},
+		{Name: "model", Description: i18n.M.CmdModel, Kind: "builtin"},
+		{Name: "memory", Description: i18n.M.CmdMemory, Kind: "builtin"},
+		{Name: "mcp", Description: i18n.M.CmdMcp, Kind: "builtin"},
+		{Name: "hooks", Description: i18n.M.CmdHooks, Kind: "builtin"},
+		{Name: "skill", Description: i18n.M.CmdSkill, Kind: "builtin"},
+		{Name: "audit", Description: i18n.M.CmdAudit, Kind: "builtin"},
+		{Name: "search", Description: i18n.M.CmdSearch, Kind: "builtin"},
+	}
+	if a.ctrl == nil {
+		return out
+	}
+	// Skills are invocable as /<name> (the model runs inline ones; subagent ones
+	// run isolated). Listing them here is what surfaces /init, /explore, … in the
+	// composer's slash menu; selecting one submits "/<name>", which the controller
+	// resolves via RunSkill.
+	for _, s := range a.ctrl.Skills() {
+		out = append(out, CommandInfo{Name: s.Name, Description: s.Description, Kind: "skill"})
+	}
+	for _, c := range a.ctrl.Commands() {
+		out = append(out, CommandInfo{Name: c.Name, Description: c.Description, Hint: c.ArgHint, Kind: "custom"})
+	}
+	if h := a.ctrl.Host(); h != nil {
+		for _, p := range h.Prompts() {
+			out = append(out, CommandInfo{Name: p.Name, Description: p.Description, Kind: "mcp"})
+		}
+	}
+	return out
+}
+
+// SlashArgItem is one sub-command / argument suggestion for the composer's slash
+// menu (the part after the command word). Mirrors the CLI's arg completion via
+// the shared control.SlashArgItems, so desktop and CLI offer the same hints.
+type SlashArgItem struct {
+	Label   string `json:"label"`
+	Insert  string `json:"insert"`
+	Hint    string `json:"hint"`
+	Descend bool   `json:"descend"`
+}
+
+// SlashArgsResult carries the suggestions plus the byte offset in the input where
+// the current token begins, so the composer replaces just that token.
+type SlashArgsResult struct {
+	Items []SlashArgItem `json:"items"`
+	From  int            `json:"from"`
+}
+
+// SlashArgs completes the arguments of a management slash command (/mcp, /model,
+// /skill, /hooks) for the composer — the same logic the chat TUI uses. Empty
+// Items means the input has no structured arguments to complete.
+func (a *App) SlashArgs(input string) SlashArgsResult {
+	if a.ctrl == nil {
+		return SlashArgsResult{}
+	}
+	data := control.ArgData{
+		Skills:       a.ctrl.Skills(),
+		CurrentModel: a.model,
+	}
+	for _, m := range a.Models() {
+		data.ModelRefs = append(data.ModelRefs, m.Ref)
+	}
+	if h := a.ctrl.Host(); h != nil {
+		data.ServerNames = h.ServerNames()
+	}
+	items, from := control.SlashArgItems(input, data)
+	// Non-nil so it serializes as a JSON array, never null — the frontend filters
+	// over it directly.
+	out := SlashArgsResult{Items: []SlashArgItem{}, From: from}
+	for _, it := range items {
+		out.Items = append(out.Items, SlashArgItem{Label: it.Label, Insert: it.Insert, Hint: it.Hint, Descend: it.Descend})
+	}
+	return out
+}
+
+// ModelInfo is one (provider, model) the bottom switcher can pick. Ref ("provider/
+// model") is what SetModel takes; Provider/Model are for display.
+type ModelInfo struct {
+	Ref      string `json:"ref"`
+	Provider string `json:"provider"`
+	Model    string `json:"model"`
+	Current  bool   `json:"current"`
+}
+
+// Models flattens the configured providers into their (provider, model) pairs —
+// the switcher's options — marking the active one. A vendor with a `models` list
+// yields one entry per model, all sharing the same endpoint/key.
+func (a *App) Models() []ModelInfo {
+	cfg, err := config.Load()
+	if err != nil {
+		return []ModelInfo{}
+	}
+	out := make([]ModelInfo, 0)
+	for i := range cfg.Providers {
+		p := &cfg.Providers[i]
+		for _, m := range p.ModelList() {
+			ref := p.Name + "/" + m
+			out = append(out, ModelInfo{Ref: ref, Provider: p.Name, Model: m, Current: ref == a.model})
+		}
+	}
+	return out
+}
+
+// SetModel switches the active model and carries the current conversation into the
+// new model's session, so the chat continues seamlessly and subsequent turns use
+// the new model. (Switching models necessarily resets the prompt cache; that's the
+// cost of the switch.) No-op if name is already active or the controller is down.
+func (a *App) SetModel(name string) error {
+	if a.ctx == nil || name == "" || name == a.model {
+		return nil
+	}
+
+	var carried []provider.Message
+	if a.ctrl != nil {
+		if err := a.ctrl.Snapshot(); err != nil {
+			fmt.Fprintf(os.Stderr, "desktop: set model snapshot: %v\n", err)
+		}
+		carried = a.ctrl.History()
+		a.ctrl.Close()
+	}
+
+	ctrl, err := boot.Build(a.ctx, boot.Options{Model: name, RequireKey: false, Sink: a.sink})
+	if err != nil {
+		return err
+	}
+	a.ctrl = ctrl
+	a.model = name
+	a.label = ctrl.Label()
+	ctrl.EnableInteractiveApproval()
+
+	path := ""
+	if dir := ctrl.SessionDir(); dir != "" {
+		path = agent.NewSessionPath(dir, ctrl.Label())
+	}
+	// Carry the prior conversation (full provider.Message log, incl. the system
+	// prompt) into the new session so history is preserved across the switch.
+	if len(carried) > 0 {
+		ctrl.Resume(&agent.Session{Messages: carried}, path)
+	} else if path != "" {
+		ctrl.SetSessionPath(path)
+	}
+	return nil
+}
+
+// DirEntry is one entry in the "@" file-reference menu.
+type DirEntry struct {
+	Name  string `json:"name"`
+	IsDir bool   `json:"isDir"`
+}
+
+// atSkip are entries the "@" menu hides as noise.
+var atSkip = map[string]bool{".git": true, "node_modules": true, ".DS_Store": true}
+
+// ListDir lists one directory level (directories first, then files, each
+// alphabetical) for the "@" file-reference menu. rel resolves against the process
+// cwd; "" lists the cwd. The menu navigates one level at a time, never
+// recursively — bounded for huge trees.
+func (a *App) ListDir(rel string) []DirEntry {
+	base, err := os.Getwd()
+	if err != nil {
+		return nil
+	}
+	dir := base
+	if rel != "" {
+		if filepath.IsAbs(rel) {
+			dir = filepath.Clean(rel)
+		} else {
+			dir = filepath.Join(base, rel)
+		}
+	}
+	// Prevent traversal outside the workspace root.
+	// Use case-insensitive comparison on Windows to prevent bypass via
+	// different casing (e.g. "C:\Users" vs "c:\users").
+	dir, err = filepath.Abs(dir)
+	if err != nil {
+		return nil
+	}
+	base, err = filepath.Abs(base)
+	if err != nil {
+		return nil
+	}
+	if !strings.EqualFold(dir, base) && !strings.HasPrefix(strings.ToLower(dir), strings.ToLower(base)+strings.ToLower(string(os.PathSeparator))) {
+		return nil // blocked: outside workspace
+	}
+	es, err := os.ReadDir(dir)
+	if err != nil {
+		return nil
+	}
+	var dirs, files []DirEntry
+	for _, e := range es {
+		name := e.Name()
+		if atSkip[name] {
+			continue
+		}
+		if e.IsDir() {
+			dirs = append(dirs, DirEntry{Name: name, IsDir: true})
+		} else {
+			files = append(files, DirEntry{Name: name, IsDir: false})
+		}
+	}
+	sort.Slice(dirs, func(i, j int) bool { return strings.ToLower(dirs[i].Name) < strings.ToLower(dirs[j].Name) })
+	sort.Slice(files, func(i, j int) bool { return strings.ToLower(files[i].Name) < strings.ToLower(files[j].Name) })
+	return append(dirs, files...)
+}
+
+// --- memory panel (frontend ⇄ controller) ---
+
+// MemoryDoc is one loaded doc-memory file for the panel: path, scope, and body.
+type MemoryDoc struct {
+	Path  string `json:"path"`
+	Scope string `json:"scope"`
+	Body  string `json:"body"`
+}
+
+// MemoryFact is one saved auto-memory, surfaced read-only in the panel.
+type MemoryFact struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Type        string `json:"type"`
+	Body        string `json:"body"`
+}
+
+// MemoryScope is one writable quick-add target (scope id + the file it writes to).
+type MemoryScope struct {
+	Scope string `json:"scope"`
+	Path  string `json:"path"`
+}
+
+// MemoryView is the whole memory panel payload: hierarchical docs, saved facts,
+// and the writable scopes for the quick-add selector.
+type MemoryView struct {
+	Docs      []MemoryDoc   `json:"docs"`
+	Facts     []MemoryFact  `json:"facts"`
+	Scopes    []MemoryScope `json:"scopes"`
+	StoreDir  string        `json:"storeDir"`
+	Available bool          `json:"available"`
+}
+
+// writableScopes are the quick-add targets the panel offers, broad → specific.
+var writableScopes = []memory.Scope{memory.ScopeUser, memory.ScopeProject, memory.ScopeLocal}
+
+// Memory returns the loaded memory for the panel: the OK.md hierarchy, the
+// saved auto-memories, and the writable scopes. Read-only; mutations go through
+// Remember / SaveDoc.
+func (a *App) Memory() MemoryView {
+	// Always return non-nil slices: a nil Go slice marshals to JSON `null`, which
+	// would crash the panel's `view.facts.length` / `.map`.
+	view := MemoryView{Docs: []MemoryDoc{}, Facts: []MemoryFact{}, Scopes: []MemoryScope{}}
+	if a.ctrl == nil {
+		return view
+	}
+	set := a.ctrl.Memory()
+	if set == nil {
+		return view
+	}
+	view.StoreDir = set.Store.Dir
+	view.Available = true
+	for _, d := range set.Docs {
+		view.Docs = append(view.Docs, MemoryDoc{Path: d.Path, Scope: string(d.Scope), Body: d.Body})
+	}
+	for _, f := range set.Store.List() {
+		view.Facts = append(view.Facts, MemoryFact{
+			Name: f.Name, Description: f.Description, Type: string(f.Type), Body: f.Body,
+		})
+	}
+	for _, sc := range writableScopes {
+		if p := set.DocPath(sc); p != "" { // user scope yields "" when no config dir
+			view.Scopes = append(view.Scopes, MemoryScope{Scope: string(sc), Path: p})
+		}
+	}
+	return view
+}
+
+// Remember quick-adds a one-line note to the doc-memory file for scope — the
+// panel's explicit "remember" action, equivalent to typing "#<note>". An unknown
+// scope falls back to project. Returns the file written.
+func (a *App) Remember(scope, note string) (string, error) {
+	if a.ctrl == nil {
+		return "", nil
+	}
+	return a.ctrl.QuickAdd(parseScope(scope), note)
+}
+
+// SaveDoc overwrites a memory doc with the panel editor's contents. The controller
+// validates path against the recognized memory files. Returns the file written.
+func (a *App) SaveDoc(path, body string) (string, error) {
+	if a.ctrl == nil {
+		return "", nil
+	}
+	return a.ctrl.SaveDoc(path, body)
+}
+
+// parseScope maps a frontend scope id to a memory.Scope, defaulting to project.
+func parseScope(s string) memory.Scope {
+	switch memory.Scope(s) {
+	case memory.ScopeUser:
+		return memory.ScopeUser
+	case memory.ScopeLocal:
+		return memory.ScopeLocal
+	default:
+		return memory.ScopeProject
+	}
+}
+
+// eventSink is the controller's event.Sink in desktop mode: it forwards every
+// agent event to the webview as one runtime event, JSON-shaped by toWire. It is a
+// type distinct from App so App's bound method set stays the clean command surface
+// — Emit must not be exposed to JS. Emit runs on the agent goroutine;
+// runtime.EventsEmit is goroutine-safe, and the ctx guard covers the brief window
+// before startup assigns it.
+type eventSink struct{ ctx context.Context }
+
+func (s *eventSink) Emit(e *event.Event) {
+	if s.ctx == nil {
+		return
+	}
+	runtime.EventsEmit(s.ctx, eventChannel, toWire(e))
+}

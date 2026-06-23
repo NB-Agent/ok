@@ -1,0 +1,1 @@
+{"name":"@ok/debug","version":"1.0.0","description":"Go debugging via Delve (dlv): start, break, continue, step, print, stack, locals, set","author":"OK Team","license":"MIT","tags":["debug","dlv","golang"],"min_ok_version":"4.0.0","tools":["debug"],"entrypoint":"ok-debug-mcp","transport":"stdio"}

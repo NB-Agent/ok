@@ -1,0 +1,13 @@
+{
+  "name": "@ok/git",
+  "version": "1.0.0",
+  "description": "Git operations: status, diff, log, commit, branch",
+  "author": "OK Team",
+  "license": "MIT",
+  "homepage": "https://github.com/ok-ai/ok-git",
+  "tags": ["git", "vcs", "version-control"],
+  "min_ok_version": "4.0.0",
+  "tools": ["git_status", "git_diff", "git_log", "git_commit", "git_branch"],
+  "entrypoint": "ok-git-mcp",
+  "transport": "stdio"
+}

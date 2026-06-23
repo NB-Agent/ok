@@ -1,0 +1,35 @@
+# README translation target languages
+# Used by scripts/translate-readme.py
+# Run: python scripts/translate-readme.py
+
+languages = [
+  # ── Skeleton language (headings + TOC only, content as placeholder) ──
+  { tag = "ja", native = "日本語", name = "Japanese", skeleton = true },
+
+  # ── Full-translation languages ──
+  { tag = "ko", native = "한국어", name = "Korean" },
+  { tag = "es", native = "Español", name = "Spanish" },
+  { tag = "fr", native = "Français", name = "French" },
+  { tag = "de", native = "Deutsch", name = "German" },
+  { tag = "pt", native = "Português", name = "Portuguese" },
+  { tag = "ru", native = "Русский", name = "Russian" },
+  { tag = "ar", native = "العربية", name = "Arabic" },
+  { tag = "id", native = "Bahasa Indonesia", name = "Indonesian" },
+  { tag = "vi", native = "Tiếng Việt", name = "Vietnamese" },
+  { tag = "th", native = "ไทย", name = "Thai" },
+  { tag = "tr", native = "Türkçe", name = "Turkish" },
+  { tag = "hi", native = "हिन्दी", name = "Hindi" },
+  { tag = "it", native = "Italiano", name = "Italian" },
+  { tag = "nl", native = "Nederlands", name = "Dutch" },
+  { tag = "pl", native = "Polski", name = "Polish" },
+  { tag = "ro", native = "Română", name = "Romanian" },
+  { tag = "uk", native = "Українська", name = "Ukrainian" },
+  { tag = "el", native = "Ελληνικά", name = "Greek" },
+  { tag = "bn", native = "বাংলা", name = "Bengali" },
+  { tag = "ta", native = "தமிழ்", name = "Tamil" },
+  { tag = "ms", native = "Bahasa Melayu", name = "Malay" },
+  { tag = "tl", native = "Filipino", name = "Filipino" },
+  { tag = "sw", native = "Kiswahili", name = "Swahili" },
+  { tag = "ur", native = "اردو", name = "Urdu" },
+  { tag = "fa", native = "فارسی", name = "Persian" },
+]
