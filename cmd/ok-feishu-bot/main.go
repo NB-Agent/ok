@@ -390,7 +390,7 @@ func main() {
 		log.Printf("feishu: cannot open log file: %v (stderr only)", err)
 	}
 	if logFile != nil {
-		defer logFile.Close()
+		defer func() { _ = logFile.Close() }()
 	}
 
 	defer func() {

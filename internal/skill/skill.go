@@ -389,7 +389,7 @@ func (s *Store) CreateWithContent(name string, scope Scope, content string) (str
 		return "", err
 	}
 	if _, err := f.WriteString(content); err != nil {
-		f.Close()
+		_ = f.Close()
 		return "", err
 	}
 	if err := f.Close(); err != nil {
