@@ -80,7 +80,7 @@ jobs:
     needs: [cli]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 20
       - run: cd editors/vscode && npm install
